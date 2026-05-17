@@ -1,0 +1,39 @@
+{
+  "name": "project_manager",
+  "version": "1.0.0",
+  "description": "a site to track and organize projects,tasks assignments with comment support",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon index.js",
+    "prod": "node index.js",
+
+    "postinstall": "prisma generate",
+    
+    "format": "prettier --write .",
+    "check-format": "prettier --check .",
+        
+    "prisma:generate": "prisma generate",
+    "prisma:pull": "prisma db pull",
+    "prisma:push": "prisma db push",
+    "prisma:studio": "prisma studio"
+  },
+  "author": "chirayu dodiya",
+  "license": "ISC",
+  "dependencies": {
+    "@prisma/adapter-mariadb": "^7.8.0",
+    "@prisma/client": "^7.8.0",
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "mariadb": "^3.5.2",
+    "prisma": "^7.8.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.8.0",
+    "nodemon": "^3.1.14",
+    "prettier": "^3.8.3"
+  }
+}

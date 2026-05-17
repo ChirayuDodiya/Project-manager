@@ -1,0 +1,127 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model activity_logs {
+  id           Int       @id @default(autoincrement()) @db.UnsignedInt
+  subject_type String    @db.VarChar(255)
+  subject_id   Int       @db.UnsignedInt
+  user_id      Int?      @db.UnsignedInt
+  action       String    @db.VarChar(255)
+  properties   Json?
+  created_at   DateTime? @default(now()) @db.Timestamp(0)
+  users        users?    @relation(fields: [user_id], references: [id], onUpdate: NoAction, map: "fk_activity_logs_user")
+
+  @@index([user_id], map: "fk_activity_logs_user")
+}
+
+model comments {
+  id             Int        @id @default(autoincrement()) @db.UnsignedInt
+  task_id        Int        @db.UnsignedInt
+  user_id        Int        @db.UnsignedInt
+  body           String     @db.Text
+  parent_id      Int?       @db.UnsignedInt
+  created_at     DateTime?  @default(now()) @db.Timestamp(0)
+  updated_at     DateTime?  @default(now()) @db.Timestamp(0)
+  deleted_at     DateTime?  @db.Timestamp(0)
+  comments       comments?  @relation("commentsTocomments", fields: [parent_id], references: [id], onUpdate: NoAction, map: "fk_comment_parent")
+  other_comments comments[] @relation("commentsTocomments")
+  tasks          tasks      @relation(fields: [task_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_comment_task")
+  users          users      @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_comment_user")
+
+  @@index([parent_id], map: "fk_comment_parent")
+  @@index([task_id], map: "fk_comment_task")
+  @@index([user_id], map: "fk_comment_user")
+}
+
+model projects {
+  id          Int             @id @default(autoincrement()) @db.UnsignedInt
+  name        String          @db.VarChar(255)
+  slug        String          @unique(map: "slug") @db.VarChar(255)
+  description String?         @db.Text
+  status      projects_status @default(planning)
+  owner_id    Int?            @db.UnsignedInt
+  start_date  DateTime        @db.Date
+  end_date    DateTime?       @db.Date
+  budget      Decimal?        @db.Decimal(10, 2)
+  created_at  DateTime?       @default(now()) @db.Timestamp(0)
+  updated_at  DateTime?       @default(now()) @db.Timestamp(0)
+  deleted_at  DateTime?       @db.Timestamp(0)
+  users       users?          @relation(fields: [owner_id], references: [id], onUpdate: NoAction, map: "fk_project_owner")
+  tasks       tasks[]
+
+  @@index([owner_id], map: "fk_project_owner")
+}
+
+model tasks {
+  id              Int            @id @default(autoincrement()) @db.UnsignedInt
+  project_id      Int            @db.UnsignedInt
+  title           String         @db.VarChar(255)
+  description     String?        @db.Text
+  status          tasks_status   @default(todo)
+  priority        tasks_priority @default(medium)
+  assigned_to     Int?           @db.UnsignedInt
+  due_date        DateTime?      @db.Date
+  estimated_hours Decimal?       @db.Decimal(5, 1)
+  actual_hours    Decimal?       @db.Decimal(5, 1)
+  sort_order      Int            @default(0)
+  created_at      DateTime?      @default(now()) @db.Timestamp(0)
+  updated_at      DateTime?      @default(now()) @db.Timestamp(0)
+  deleted_at      DateTime?      @db.Timestamp(0)
+  comments        comments[]
+  users           users?         @relation(fields: [assigned_to], references: [id], onUpdate: NoAction, map: "fk_task_assigned_user")
+  projects        projects       @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_task_project")
+
+  @@index([assigned_to], map: "fk_task_assigned_user")
+  @@index([project_id], map: "fk_task_project")
+}
+
+model users {
+  id            Int             @id @default(autoincrement()) @db.UnsignedInt
+  name          String          @db.VarChar(255)
+  email         String          @unique(map: "email") @db.VarChar(255)
+  password      String          @db.VarChar(255)
+  role          users_role      @default(developer)
+  avatar_url    String?         @db.VarChar(255)
+  is_active     Boolean         @default(true)
+  created_at    DateTime?       @default(now()) @db.Timestamp(0)
+  updated_at    DateTime?       @default(now()) @db.Timestamp(0)
+  deleted_at    DateTime?       @db.Timestamp(0)
+  activity_logs activity_logs[]
+  comments      comments[]
+  projects      projects[]
+  tasks         tasks[]
+}
+
+enum projects_status {
+  planning
+  active
+  on_hold
+  completed
+  archived
+}
+
+enum tasks_status {
+  todo
+  in_progress
+  in_review
+  done
+}
+
+enum users_role {
+  admin
+  manager
+  developer
+}
+
+enum tasks_priority {
+  low
+  medium
+  high
+  critical
+}

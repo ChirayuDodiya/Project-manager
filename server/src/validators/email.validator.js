@@ -2,12 +2,19 @@ import { z } from 'zod';
 import { errorResponse } from '../utils/response.js';
 
 const emailSchema = z.object({
-  email: z.string().email('Invalid email address'),
+  email: z
+    .string()
+    .nonempty('Email is required')
+    .trim()
+    .max(255, 'Email must not exceed 255 characters')
+    .email('Invalid email address')
+    .transform((email) => email.toLowerCase()),
 });
 
 const validateEmail = (req, res, next) => {
   try {
-    emailSchema.parse(req.body);
+    const validated = emailSchema.parse(req.body);
+    req.body.email = validated.email;
     return next();
   } catch (err) {
     const errors = err?.issues || err?.errors;

@@ -7,15 +7,6 @@ import { asyncHandler } from '../../utils/asyncHandler.js';
 
 const register = asyncHandler(async (req, res) => {
   const { name, email, password, password_confirmation } = req.body;
-  email = email.trim().toLowerCase();
-
-  if (!name || !email || !password || !password_confirmation) {
-    return errorResponse(res, 'All fields are required', 400);
-  }
-
-  if (password !== password_confirmation) {
-    return errorResponse(res, 'password and password_confirmation does not match', 400);
-  }
 
   const existingUser = await prisma.users.findUnique({ where: { email } });
 

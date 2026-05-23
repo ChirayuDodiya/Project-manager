@@ -3,6 +3,7 @@ import { asyncHandler } from '../../utils/asyncHandler.js';
 import prisma from '../../prisma/client.js';
 import { serializeUser } from '../../serializers/user.serializer.js';
 import { serializeProject } from '../../serializers/project.serializer.js';
+import { serializeTask } from '../../serializers/task.serializer.js';
 import { createActivityLog } from '../../services/activity.service.js';
 import { buildSlug } from '../../services/slug.service.js';
 
@@ -22,11 +23,11 @@ const listProjects = asyncHandler(async (req, res) => {
   const allowedSortFields = ['created_at', 'start_date', 'end_date', 'name', 'status'];
   const orderField = allowedSortFields.includes(sortBy) ? sortBy : 'created_at';
   const orderDirection = order === 'asc' ? 'asc' : 'desc';
-  
+
   const allowedStatus = ['planning', 'active', 'on_hold', 'completed', 'archived'];
   if (status && !allowedStatus.includes(status)) {
     return errorResponse(res, 'Invalid status filter', 400);
-  }  
+  }
 
   const where = {
     deleted_at: null,
@@ -54,7 +55,7 @@ const listProjects = asyncHandler(async (req, res) => {
       take: pageSize,
     }),
   ]);
-  
+
   const serialized = projects.map((project) => serializeProject(project));
 
   return paginatedResponse(res, serialized, {
@@ -67,7 +68,6 @@ const listProjects = asyncHandler(async (req, res) => {
 
 // POST: /api/v1/projects — Create (admin & manager only)
 const createProject = asyncHandler(async (req, res) => {
-  
   const slug = await buildSlug(req.body.name);
 
   const project = await prisma.projects.create({
@@ -93,12 +93,7 @@ const createProject = asyncHandler(async (req, res) => {
     console.error('Activity log failed:', error);
   });
 
-  return successResponse(
-    res,
-    serializeProject(project),
-    'Project created successfully',
-    201
-  );
+  return successResponse(res, serializeProject(project), 'Project created successfully', 201);
 });
 
 const getProjectBySlug = async (slug) => {
@@ -183,7 +178,7 @@ const updateProject = asyncHandler(async (req, res) => {
   }
 
   const updateData = req.body;
-  
+
   const data = { ...updateData };
 
   if (updateData.name && updateData.name !== project.name) {
@@ -246,7 +241,6 @@ const deleteProject = asyncHandler(async (req, res) => {
   return successResponse(res, null, 'Project deleted successfully', 200);
 });
 
-
 // GET: /api/v1/projects/{slug}/stats — Task count by status, total hours, overdue count
 const projectStats = asyncHandler(async (req, res) => {
   const { slug } = req.params;
@@ -300,4 +294,114 @@ const projectStats = asyncHandler(async (req, res) => {
   });
 });
 
-export { listProjects, createProject, showProject, updateProject, deleteProject, projectStats };
+// GET: /api/v1/projects/{slug}/tasks — List with filtering (status, priority, assigned_to), sorting, pagination
+const listTasks = asyncHandler(async (req, res) => {
+  const {
+    status,
+    priority,
+    assigned_to,
+    page = 1,
+    per_page = 20,
+    sortBy = 'created_at',
+    order = 'desc',
+  } = req.query;
+
+  const pageNumber = Math.max(Number(page) || 1, 1);
+  const pageSize = Math.min(Math.max(Number(per_page) || 20, 1), 100);
+
+  const allowedSortFields = [
+    'created_at',
+    'title',
+    'status',
+    'priority',
+    'assigned_to',
+    'due_date',
+    'sort_order',
+  ];
+  const orderField = allowedSortFields.includes(sortBy) ? sortBy : 'sort_order';
+  const orderDirection = order === 'desc' ? 'desc' : 'asc';
+
+  const allowedStatus = ['todo', 'in_progress', 'in_review', 'done'];
+  if (status && !allowedStatus.includes(status)) {
+    return errorResponse(res, 'Invalid status filter', 400);
+  }
+
+  const allowedPriority = ['low', 'medium', 'high', 'critical'];
+  if (priority && !allowedPriority.includes(priority)) {
+    return errorResponse(res, 'Invalid priority filter', 400);
+  }
+
+  const where = {
+    deleted_at: null,
+  };
+
+  if (status) {
+    where.status = status;
+  }
+
+  if (priority) {
+    where.priority = priority;
+  }
+
+  if (assigned_to) {
+    where.assigned_to = assigned_to;
+  }
+
+  const [total, tasks] = await Promise.all([
+    prisma.tasks.count({
+      where,
+    }),
+    prisma.tasks.findMany({
+      where,
+      include: {
+        users: true,
+      },
+      orderBy: {
+        [orderField]: orderDirection,
+      },
+      skip: (pageNumber - 1) * pageSize,
+      take: pageSize,
+    }),
+  ]);
+
+  const serialized = tasks.map((task) => serializeTask(task));
+
+  return paginatedResponse(res, serialized, {
+    page: pageNumber,
+    per_page: pageSize,
+    total,
+    total_pages: Math.ceil(total / pageSize),
+  });
+});
+
+// POST: /api/v1/projects/{slug}/tasks — Create task within project
+const createTask = asyncHandler(async (req, res) => {
+  const { slug } = req.params;
+
+  const project = await getProjectBySlug(slug);
+
+  if (!project) {
+    return errorResponse(res, 'Project not found', 404);
+  }
+
+  const task = await prisma.tasks.create({
+    data: {
+      ...req.body,
+      project_id: project.id,
+    },
+    include: { users: true },
+  });
+
+  return successResponse(res, serializeTask(task), 'Task created successfully', 201);
+});
+
+export {
+  listProjects,
+  createProject,
+  showProject,
+  updateProject,
+  deleteProject,
+  projectStats,
+  listTasks,
+  createTask,
+};

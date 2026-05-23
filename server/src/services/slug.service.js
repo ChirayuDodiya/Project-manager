@@ -8,7 +8,7 @@ const toSlug = (name) => {
 
 const buildSlug = async (name, excludeProjectId = null) => {
   const baseSlug = toSlug(name) || `project-${Date.now()}`;
-  
+
   const where = {
     slug: {
       startsWith: baseSlug,

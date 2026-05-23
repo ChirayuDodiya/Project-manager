@@ -45,7 +45,7 @@ const projectCreateSchema = z.object({
     }, z.number().int().positive('Owner ID must be a positive integer'))
     .optional(),
 
-    //if start date is not provided, it will be set to the current date
+  //if start date is not provided, it will be set to the current date
   start_date: z
     .preprocess(parseDate, z.date({ invalid_type_error: 'Invalid start date' }))
     .default(() => new Date()),
@@ -53,24 +53,18 @@ const projectCreateSchema = z.object({
   end_date: z.preprocess(parseDate, z.date({ invalid_type_error: 'Invalid end date' })).optional(),
 
   budget: z
-  .string()
-  .regex(
-    /^\d{1,8}(\.\d{1,2})?$/,
-    'Budget must be a valid DECIMAL(10,2)'
-  )
-  .transform(Number)
-  .optional(),
+    .string()
+    .regex(/^\d{1,8}(\.\d{1,2})?$/, 'Budget must be a valid DECIMAL(10,2)')
+    .transform(Number)
+    .optional(),
 });
 
-const projectUpdateSchema = 
-projectCreateSchema
-.partial()
-
+const projectUpdateSchema = projectCreateSchema.partial();
 
 const validateCreateProject = (req, res, next) => {
   try {
     //assign validated data to req.body to store default values like date
-    req.body=projectCreateSchema.parse(req.body);
+    req.body = projectCreateSchema.parse(req.body);
 
     return next();
   } catch (err) {

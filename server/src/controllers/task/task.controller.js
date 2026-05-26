@@ -39,6 +39,18 @@ const updateTask = asyncHandler(async (req, res) => {
     include: { users: true },
   });
 
+  await createActivityLog({
+    subject_type: 'task',
+    subject_id: updatedTask.id,
+    user_id: req.user.id,
+    action: 'updated',
+    properties: {
+      changes: updateData,
+    },
+  }).catch((error) => {
+    console.error('Activity log failed:', error);
+  });
+
   return successResponse(res, serializeTask(updatedTask), 'Task updated successfully');
 });
 
@@ -76,6 +88,18 @@ const changeTaskStatus = asyncHandler(async (req, res) => {
     include: { users: true },
   });
 
+  await createActivityLog({
+    subject_type: 'task',
+    subject_id: updatedTask.id,
+    user_id: req.user.id,
+    action: 'updated',
+    properties: {
+      changes: updateData,
+    },
+  }).catch((error) => {
+    console.error('Activity log failed:', error);
+  });
+
   return successResponse(res, serializeTask(updatedTask), 'Task status updated successfully');
 });
 
@@ -99,6 +123,18 @@ const assignTask = asyncHandler(async (req, res) => {
     where: { id: taskId },
     data: { assigned_to },
     include: { users: true },
+  });
+
+  await createActivityLog({
+    subject_type: 'task',
+    subject_id: updatedTask.id,
+    user_id: req.user.id,
+    action: 'updated',
+    properties: {
+      changes: { assigned_to },
+    },
+  }).catch((error) => {
+    console.error('Activity log failed:', error);
   });
 
   return successResponse(res, serializeTask(updatedTask), 'Task assignment updated successfully');
@@ -136,6 +172,18 @@ const deleteTask = asyncHandler(async (req, res) => {
   const deletedTask = await prisma.tasks.update({
     where: { id: taskId },
     data: { deleted_at: new Date() },
+  });
+
+  await createActivityLog({
+    subject_type: 'task',
+    subject_id: deletedTask.id,
+    user_id: req.user.id,
+    action: 'deleted',
+    properties: {
+      name: deletedTask.title,
+    },
+  }).catch((error) => {
+    console.error('Activity log failed:', error);
   });
 
   return successResponse(res, null, 'Task deleted successfully');
@@ -203,6 +251,18 @@ const createTaskComment = asyncHandler(async (req, res) => {
       parent_id,
     },
     include: { users: true },
+  });
+
+  await createActivityLog({
+    subject_type: 'comment',
+    subject_id: comment.id,
+    user_id: req.user.id,
+    action: 'created',
+    properties: {
+      name: comment.body,
+    },
+  }).catch((error) => {
+    console.error('Activity log failed:', error);
   });
 
   return successResponse(

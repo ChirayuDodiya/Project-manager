@@ -392,6 +392,21 @@ const createTask = asyncHandler(async (req, res) => {
     include: { users: true },
   });
 
+  await createActivityLog({
+    subject_type: 'task',
+    subject_id: task.id,
+    user_id: req.user.id,
+    action: 'created',
+    properties: {
+      name: task.title,
+      status: task.status,
+      priority: task.priority,
+      assigned_to: task.assigned_to,
+    },
+  }).catch((error) => {
+    console.error('Activity log failed:', error);
+  });
+
   return successResponse(res, serializeTask(task), 'Task created successfully', 201);
 });
 

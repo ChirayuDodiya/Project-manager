@@ -2,6 +2,7 @@ import { successResponse, errorResponse } from '../../utils/response.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
 import prisma from '../../prisma/client.js';
 import { serializeComment } from '../../serializers/comment.serializer.js';
+import { createActivityLog } from '../../services/activity.service.js';
 
 // PUT: /api/v1/comments/{id} — Edit own comment only (within 15 minutes)
 const updateComment = asyncHandler(async (req, res) => {
@@ -37,6 +38,18 @@ const updateComment = asyncHandler(async (req, res) => {
     include: { users: true },
   });
 
+  await createActivityLog({
+    subject_type: 'comment',
+    subject_id: updatedComment.id,
+    user_id: req.user.id,
+    action: 'updated',
+    properties: {
+      changes: { body },
+    },
+  }).catch((error) => {
+    console.error('Activity log failed:', error);
+  });
+
   return successResponse(
     res,
     serializeComment({ ...updatedComment, user: updatedComment.users }),
@@ -69,6 +82,15 @@ const deleteComment = asyncHandler(async (req, res) => {
   await prisma.comments.update({
     where: { id: commentId },
     data: { deleted_at: new Date() },
+  });
+
+  await createActivityLog({
+    subject_type: 'comment',
+    subject_id: commentId,
+    user_id: req.user.id,
+    action: 'deleted',
+  }).catch((error) => {
+    console.error('Activity log failed:', error);
   });
 
   return successResponse(res, null, 'Comment deleted successfully');

@@ -9,33 +9,23 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(() => {
-    const savedUser = localStorage.getItem('user');
-    try {
-      return savedUser ? JSON.parse(savedUser) : null;
-    } catch {
-      localStorage.removeItem('user');
-      return null;
-    }
-  });
+  const [user, setUser] = useState<User | null | undefined>(undefined);
 
+  // Verify session validity via /auth/me
   const checkAuth = useCallback(async () => {
     try {
       const response = await api.get('/auth/me');
       if (response.data && response.data.success) {
-        const fetchedUser = response.data.data;
-        setUser(fetchedUser);
-        localStorage.setItem('user', JSON.stringify(fetchedUser));
+        setUser(response.data.data);
       } else {
         setUser(null);
-        localStorage.removeItem('user');
       }
     } catch {
       setUser(null);
-      localStorage.removeItem('user');
     }
   }, []);
 
+  // Run initial session check on mount
   useEffect(() => {
     const timer = setTimeout(() => {
       void checkAuth();
@@ -43,21 +33,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return () => clearTimeout(timer);
   }, [checkAuth]);
 
+  // Log in using credentials
   const login = useCallback(async (email: string, password: string) => {
     const response = await api.post('/auth/login', { email, password });
     if (response.data && response.data.success) {
-      const loggedInUser = response.data.data;
-      setUser(loggedInUser);
-      localStorage.setItem('user', JSON.stringify(loggedInUser));
+      setUser(response.data.data);
     }
   }, []);
 
+  // Log out and clear state
   const logout = useCallback(async () => {
     try {
       await api.post('/auth/logout');
     } finally {
       setUser(null);
-      localStorage.removeItem('user');
     }
   }, []);
 

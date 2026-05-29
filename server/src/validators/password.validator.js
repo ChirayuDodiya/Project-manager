@@ -7,6 +7,7 @@ const passwordSchema = z.object({
   password: z
     .string()
     .min(8, 'Password must be at least 8 characters')
+    .max(30, 'Password must not exceed 30 characters')
     .regex(passwordRegex, 'Password must contain uppercase, lowercase and number'),
   password_confirmation: z.string().optional(),
 });

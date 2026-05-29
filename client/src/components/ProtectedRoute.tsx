@@ -6,7 +6,11 @@ export const ProtectedRoute: React.FC = () => {
   const { user } = useAuth();
   const location = useLocation();
 
-  if (!user) {
+  if (user === undefined) {
+    return <div className="w-screen h-screen bg-[#121212]"></div>;
+  }
+
+  if (user === null) {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 

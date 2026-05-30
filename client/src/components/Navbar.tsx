@@ -1,0 +1,35 @@
+import { useAuth } from '../hooks/useAuth';
+
+export function Navbar() {
+  const { user, logout } = useAuth();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch {
+      //ignore logout error
+    }
+  };
+
+  return (
+    <header className="w-full bg-[#121212] border-b border-[#2d2d2d] px-8 py-3 flex items-center justify-end h-16 text-white select-none">
+      <div className="flex items-center gap-6">
+        <button
+          onClick={handleLogout}
+          className="px-6 py-1 bg-[#4c1c1c] border border-white hover:bg-[#682525] rounded-xl text-white text-base font-semibold transition-colors duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-500"
+        >
+          Logout
+        </button>
+
+        <div className="flex flex-col text-right">
+          <span className="text-white text-base font-semibold leading-tight">{user?.name}</span>
+          <span className="text-gray-400 text-xs font-semibold capitalize mt-0.5">
+            {user?.role}
+          </span>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+export default Navbar;

@@ -18,4 +18,11 @@ export interface Project {
   task_count: number;
   completed_tasks?: number;
   created_at: string;
+  owner?: {
+    id: number;
+    name: string;
+    email: string;
+    role: string;
+    avatar_url: string | null;
+  } | null;
 }

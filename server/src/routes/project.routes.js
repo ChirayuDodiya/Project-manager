@@ -9,6 +9,7 @@ import {
   projectStats,
   listTasks,
   createTask,
+  teamMembers,
 } from '../controllers/project/project.controller.js';
 import { ProjectPolicy } from '../policies/project.policy.js';
 import { TaskPolicy } from '../policies/task.policy.js';
@@ -25,5 +26,6 @@ router.delete('/:slug', authMiddleware, ProjectPolicy.canDelete, deleteProject);
 router.get('/:slug/stats', authMiddleware, projectStats);
 router.get('/:slug/tasks', authMiddleware, listTasks);
 router.post('/:slug/tasks', authMiddleware, validateCreateTask, TaskPolicy.canCreate, createTask);
+router.get('/:slug/team-members', authMiddleware, teamMembers);
 
 export default router;

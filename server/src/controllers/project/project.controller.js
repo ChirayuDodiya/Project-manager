@@ -464,6 +464,35 @@ const createTask = asyncHandler(async (req, res) => {
   return successResponse(res, serializeTask(task), 'Task created successfully', 201);
 });
 
+// GET: /api/v1/projects/{slug}/team-members — List all team members assigned to project
+const teamMembers = asyncHandler(async (req, res) => {
+  const { slug } = req.params;
+  const project = await getProjectBySlug(slug);
+
+  if (!project) {
+    return errorResponse(res, 'Project not found', 404);
+  }
+
+  const members = await prisma.team_members.findMany({
+    where: {
+      project_id: project.id,
+      deleted_at: null,
+      users: {
+        is_active: true,
+        deleted_at: null,
+      },
+    },
+    include: {
+      users: true,
+    },
+  });
+
+  const usersList = members.map((m) => m.users).filter(Boolean);
+  const serializedUsers = usersList.map((user) => serializeUser(user));
+
+  return successResponse(res, serializedUsers, 'Team members fetched successfully');
+});
+
 export {
   listProjects,
   createProject,
@@ -473,4 +502,5 @@ export {
   projectStats,
   listTasks,
   createTask,
+  teamMembers,
 };

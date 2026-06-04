@@ -31,21 +31,21 @@ export function AddTaskModal({ isOpen, onClose, onTaskCreated, slug }: AddTaskMo
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [serverError, setServerError] = useState('');
 
-  // Fetch users on open
+  // Fetch project team members on open
   useEffect(() => {
     if (isOpen) {
       api
-        .get('/auth/users')
+        .get(`/projects/${slug}/team-members`)
         .then((res) => {
           if (res.data && res.data.success) {
             setAllUsers(res.data.data);
           }
         })
         .catch((err) => {
-          console.error('Failed to fetch users:', err);
+          console.error('Failed to fetch project team members:', err);
         });
     }
-  }, [isOpen]);
+  }, [isOpen, slug]);
 
   // Click outside to close user dropdown
   useEffect(() => {

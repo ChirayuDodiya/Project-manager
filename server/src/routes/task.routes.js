@@ -11,6 +11,7 @@ import {
   deleteTask,
   listTaskComments,
   createTaskComment,
+  showTask,
 } from '../controllers/task/task.controller.js';
 import {
   validateUpdateTask,
@@ -21,6 +22,8 @@ import {
 import { validateCreateComment } from '../validators/comment.validator.js';
 import { loadTaskAndProject } from '../loaders/taskAndProject.loader.js';
 const router = express.Router();
+
+router.get('/:id', authMiddleware, loadTaskAndProject, showTask);
 
 router.put(
   '/:id',

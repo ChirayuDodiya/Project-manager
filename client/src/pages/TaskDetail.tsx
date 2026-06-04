@@ -1,0 +1,61 @@
+import { useState, useEffect } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import api from '../services/api';
+import type { ProjectTask } from '../types';
+import TaskDetailComponent from '../components/TaskDetailComponent';
+
+export function TaskDetail() {
+  const { slug, taskId } = useParams<{ slug: string; taskId: string }>();
+  const [task, setTask] = useState<ProjectTask | null>(null);
+
+  // Fetch task details on mount
+  useEffect(() => {
+    let active = true;
+    const fetchTask = async () => {
+      try {
+        const response = await api.get(`/tasks/${taskId}`);
+        if (active && response.data && response.data.success) {
+          setTask(response.data.data);
+        }
+      } catch {
+        // skip error
+      }
+    };
+
+    if (taskId) {
+      void fetchTask();
+    }
+    return () => {
+      active = false;
+    };
+  }, [taskId]);
+
+  return (
+    <main className="p-6 text-white min-h-full bg-[#121212] select-none">
+      <div className="max-w-2xl space-y-8 text-left">
+        <div className="flex items-center gap-6">
+          {/* Back button */}
+          <Link
+            to={`/projects/${slug}`}
+            className="flex items-center justify-center w-12 h-10 bg-[#043314] border border-white hover:bg-[#074c1f] rounded-xl text-white text-xl font-medium tracking-wide transition-colors duration-200 cursor-pointer shadow-md focus:outline-none focus:ring-2 focus:ring-[#098032]"
+            title="Back to Project Board"
+          >
+            &lt;-
+          </Link>
+          <h2 className="text-2xl font-bold tracking-wide">Task Details</h2>
+        </div>
+
+        {task && slug && (
+          <TaskDetailComponent
+            key={`${task.id}-${task.title}-${task.description || ''}-${task.due_date || ''}-${task.estimated_hours || ''}-${task.actual_hours || ''}-${task.priority}-${task.assigned_to?.id || ''}`}
+            initialTask={task}
+            slug={slug}
+            onUpdate={(updatedTask) => setTask(updatedTask)}
+          />
+        )}
+      </div>
+    </main>
+  );
+}
+
+export default TaskDetail;

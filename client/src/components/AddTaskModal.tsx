@@ -288,7 +288,7 @@ export function AddTaskModal({ isOpen, onClose, onTaskCreated, slug }: AddTaskMo
                 type="date"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="w-full h-11 px-4 bg-[#1e1e1e] border border-[#043314] hover:border-emerald-700 focus:border-emerald-500 focus:outline-none rounded-xl text-white text-sm cursor-pointer"
+                className="w-full h-11 px-4 bg-[#1e1e1e] border border-[#043314] hover:border-emerald-700 focus:border-emerald-500 focus:outline-none rounded-xl text-white text-sm cursor-pointer [&::-webkit-calendar-picker-indicator]:invert"
               />
             </div>
           </div>

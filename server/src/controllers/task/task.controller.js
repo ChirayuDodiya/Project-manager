@@ -273,6 +273,11 @@ const createTaskComment = asyncHandler(async (req, res) => {
   );
 });
 
+// GET: /api/v1/tasks/{id} — Get single task details
+const showTask = asyncHandler(async (req, res) => {
+  return successResponse(res, serializeTask(req.task), 'Task details retrieved successfully');
+});
+
 export {
   updateTask,
   changeTaskStatus,
@@ -281,4 +286,5 @@ export {
   deleteTask,
   listTaskComments,
   createTaskComment,
+  showTask,
 };

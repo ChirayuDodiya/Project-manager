@@ -1,5 +1,6 @@
 import { useSortable } from '@dnd-kit/react/sortable';
 import { CollisionPriority } from '@dnd-kit/abstract';
+import { useNavigate, useParams } from 'react-router-dom';
 import type { ProjectTask } from '../types';
 import { formatDate } from '../utils/formatDate';
 
@@ -21,6 +22,9 @@ const isOverdue = (task: ProjectTask) => {
 };
 
 export function TaskCard({ task, index }: TaskCardProps) {
+  const { slug } = useParams<{ slug: string }>();
+  const navigate = useNavigate();
+
   const { ref, isDragging } = useSortable({
     id: task.id,
     index,
@@ -42,17 +46,18 @@ export function TaskCard({ task, index }: TaskCardProps) {
   const priorityClass =
     priorityStyles[task.priority] || 'bg-zinc-800 border border-zinc-700 text-zinc-300';
 
+  const handleCardClick = () => {
+    navigate(`/projects/${slug}/tasks/${task.id}`);
+  };
+
   return (
     <div
       ref={ref}
       id={`task-card-${task.id}`}
-      className={`relative p-4 bg-[#1a1a1a] rounded-2xl border transition-all duration-200 select-none text-left cursor-grab active:cursor-grabbing ${
+      onClick={handleCardClick}
+      className={`relative p-4 bg-[#1a1a1a] rounded-2xl border transition-all duration-200 select-none text-left cursor-pointer hover:border-emerald-500/40 active:cursor-grabbing ${
         isDragging ? 'opacity-30' : ''
-      } ${
-        overdue
-          ? 'border-red-500/80 shadow-md shadow-red-500/5'
-          : 'border-[#333] hover:border-emerald-500/40'
-      }`}
+      } ${overdue ? 'border-red-500/80 shadow-md shadow-red-500/5' : 'border-[#333]'}`}
     >
       {/* Priority Badge in Top Right */}
       <span

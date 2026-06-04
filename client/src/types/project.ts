@@ -4,6 +4,9 @@ export interface ProjectTask {
   status: 'todo' | 'in_progress' | 'in_review' | 'done';
   priority: 'low' | 'medium' | 'high' | 'critical';
   due_date?: string | null;
+  description?: string | null;
+  estimated_hours?: number | null;
+  actual_hours?: number | null;
   assigned_to?: {
     id: number;
     name: string;

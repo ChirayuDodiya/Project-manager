@@ -4,6 +4,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import ProjectDetail from './pages/ProjectDetail';
+import TaskDetail from './pages/TaskDetail';
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
         <Route element={<ProtectedRoute />}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/projects/:slug" element={<ProjectDetail />} />
+          <Route path="/projects/:slug/tasks/:taskId" element={<TaskDetail />} />
 
           {/* Catch-all redirects back to root */}
           <Route path="*" element={<Navigate to="/" replace />} />

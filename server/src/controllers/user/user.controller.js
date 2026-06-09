@@ -4,16 +4,18 @@ import { asyncHandler } from '../../utils/asyncHandler.js';
 import { serializeUser } from '../../serializers/user.serializer.js';
 import { createActivityLog } from '../../services/activity.service.js';
 
-// GET: /api/v1/users — List active users with optional search filter and pagination
+// GET: /api/v1/users — List users with optional search filter and pagination
 const listUsers = asyncHandler(async (req, res) => {
-  const { search, page = 1, per_page = 20 } = req.query;
+  const { search, page = 1, per_page = 20, active_only } = req.query;
   const pageNumber = Math.max(Number(page) || 1, 1);
   const pageSize = Math.min(Math.max(Number(per_page) || 20, 1), 100);
 
-  const where = {
-    is_active: true,
-    deleted_at: null,
-  };
+  const where = {};
+
+  if (active_only === 'true') {
+    where.is_active = true;
+    where.deleted_at = null;
+  }
 
   if (search) {
     where.OR = [{ name: { contains: search } }, { email: { contains: search } }];
@@ -54,10 +56,7 @@ const updateUserRole = asyncHandler(async (req, res) => {
   }
 
   const targetUser = await prisma.users.findFirst({
-    where: {
-      id: targetUserId,
-      deleted_at: null,
-    },
+    where: { id: targetUserId },
   });
 
   if (!targetUser) {
@@ -95,4 +94,86 @@ const updateUserRole = asyncHandler(async (req, res) => {
   return successResponse(res, serializeUser(updatedUser), 'User role updated successfully');
 });
 
-export { listUsers, updateUserRole };
+// DELETE: /api/v1/users/:id — Soft delete user (Admin only)
+const softDeleteUser = asyncHandler(async (req, res) => {
+  const targetUserId = parseInt(req.params.id, 10);
+  if (isNaN(targetUserId)) {
+    return errorResponse(res, 'Invalid user ID', 400);
+  }
+
+  const targetUser = await prisma.users.findFirst({
+    where: { id: targetUserId },
+  });
+
+  if (!targetUser) {
+    return errorResponse(res, 'User not found', 404);
+  }
+
+  const updatedUser = await prisma.users.update({
+    where: { id: targetUserId },
+    data: {
+      is_active: false,
+      deleted_at: new Date(),
+    },
+  });
+
+  try {
+    await createActivityLog({
+      subject_type: 'users',
+      subject_id: targetUserId,
+      user_id: req.user.id,
+      action: 'soft_delete',
+      properties: {
+        user_name: targetUser.name,
+        user_email: targetUser.email,
+      },
+    });
+  } catch (logError) {
+    console.error('Failed to log activity:', logError);
+  }
+
+  return successResponse(res, serializeUser(updatedUser), 'User deactivated successfully');
+});
+
+// POST: /api/v1/users/:id/restore — Restore user (Admin only)
+const restoreUser = asyncHandler(async (req, res) => {
+  const targetUserId = parseInt(req.params.id, 10);
+  if (isNaN(targetUserId)) {
+    return errorResponse(res, 'Invalid user ID', 400);
+  }
+
+  const targetUser = await prisma.users.findFirst({
+    where: { id: targetUserId },
+  });
+
+  if (!targetUser) {
+    return errorResponse(res, 'User not found', 404);
+  }
+
+  const updatedUser = await prisma.users.update({
+    where: { id: targetUserId },
+    data: {
+      is_active: true,
+      deleted_at: null,
+    },
+  });
+
+  try {
+    await createActivityLog({
+      subject_type: 'users',
+      subject_id: targetUserId,
+      user_id: req.user.id,
+      action: 'restore_user',
+      properties: {
+        user_name: targetUser.name,
+        user_email: targetUser.email,
+      },
+    });
+  } catch (logError) {
+    console.error('Failed to log activity:', logError);
+  }
+
+  return successResponse(res, serializeUser(updatedUser), 'User restored successfully');
+});
+
+export { listUsers, updateUserRole, softDeleteUser, restoreUser };

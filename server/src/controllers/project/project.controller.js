@@ -512,6 +512,133 @@ const listManagers = asyncHandler(async (req, res) => {
   return successResponse(res, serialized, 'Managers fetched successfully');
 });
 
+// POST: /api/v1/projects/{slug}/team-members — Add a team member
+const addTeamMember = asyncHandler(async (req, res) => {
+  const { slug } = req.params;
+  const { user_id } = req.body;
+
+  const project = req.project || (await getProjectBySlug(slug));
+  if (!project) {
+    return errorResponse(res, 'Project not found', 404);
+  }
+
+  const userId = Number(user_id);
+  if (Number.isNaN(userId)) {
+    return errorResponse(res, 'Invalid user ID', 400);
+  }
+
+  const targetUser = await prisma.users.findFirst({
+    where: { id: userId, is_active: true, deleted_at: null },
+  });
+
+  if (!targetUser) {
+    return errorResponse(res, 'User not found or inactive', 404);
+  }
+
+  // Check if already a member (including soft deleted)
+  const existingMember = await prisma.team_members.findFirst({
+    where: {
+      project_id: project.id,
+      user_id: userId,
+    },
+  });
+
+  if (existingMember) {
+    if (existingMember.deleted_at === null) {
+      return errorResponse(res, 'User is already a member of this project', 400);
+    }
+    // Restore member
+    await prisma.team_members.update({
+      where: { id: existingMember.id },
+      data: { deleted_at: null, updated_at: new Date() },
+    });
+  } else {
+    // Create new member
+    await prisma.team_members.create({
+      data: {
+        project_id: project.id,
+        user_id: userId,
+      },
+    });
+  }
+
+  // Create Activity Log
+  try {
+    await createActivityLog({
+      subject_type: 'projects',
+      subject_id: project.id,
+      user_id: req.user.id,
+      action: 'add_member',
+      properties: {
+        member_id: userId,
+        member_name: targetUser.name,
+        member_email: targetUser.email,
+        project_name: project.name,
+      },
+    });
+  } catch (logError) {
+    console.error('Failed to log activity:', logError);
+  }
+
+  return successResponse(res, serializeUser(targetUser), 'Member added successfully', 200);
+});
+
+// DELETE: /api/v1/projects/{slug}/team-members/{userId} — Remove a team member
+const removeTeamMember = asyncHandler(async (req, res) => {
+  const { slug, userId: userIdParam } = req.params;
+  const project = req.project || (await getProjectBySlug(slug));
+  if (!project) {
+    return errorResponse(res, 'Project not found', 404);
+  }
+
+  const userId = Number(userIdParam);
+  if (Number.isNaN(userId)) {
+    return errorResponse(res, 'Invalid user ID', 400);
+  }
+
+  // Check if member exists in project
+  const existingMember = await prisma.team_members.findFirst({
+    where: {
+      project_id: project.id,
+      user_id: userId,
+      deleted_at: null,
+    },
+    include: {
+      users: true,
+    },
+  });
+
+  if (!existingMember) {
+    return errorResponse(res, 'Member not found in this project', 404);
+  }
+
+  // Soft delete team member
+  await prisma.team_members.update({
+    where: { id: existingMember.id },
+    data: { deleted_at: new Date() },
+  });
+
+  // Create Activity Log
+  try {
+    await createActivityLog({
+      subject_type: 'projects',
+      subject_id: project.id,
+      user_id: req.user.id,
+      action: 'remove_member',
+      properties: {
+        member_id: userId,
+        member_name: existingMember.users.name,
+        member_email: existingMember.users.email,
+        project_name: project.name,
+      },
+    });
+  } catch (logError) {
+    console.error('Failed to log activity:', logError);
+  }
+
+  return successResponse(res, null, 'Member removed successfully', 200);
+});
+
 export {
   listProjects,
   createProject,
@@ -523,4 +650,6 @@ export {
   createTask,
   teamMembers,
   listManagers,
+  addTeamMember,
+  removeTeamMember,
 };

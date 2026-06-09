@@ -11,11 +11,14 @@ import {
   createTask,
   teamMembers,
   listManagers,
+  addTeamMember,
+  removeTeamMember,
 } from '../controllers/project/project.controller.js';
 import { ProjectPolicy } from '../policies/project.policy.js';
 import { TaskPolicy } from '../policies/task.policy.js';
 import { validateCreateProject, validateUpdateProject } from '../validators/project.validator.js';
 import { validateCreateTask } from '../validators/task.validator.js';
+import { loadProjectBySlug } from '../loaders/project.loader.js';
 
 const router = express.Router();
 
@@ -23,11 +26,32 @@ router.get('/', authMiddleware, listProjects);
 router.post('/', authMiddleware, validateCreateProject, ProjectPolicy.canCreate, createProject);
 router.get('/managers', authMiddleware, listManagers);
 router.get('/:slug', authMiddleware, showProject);
-router.put('/:slug', authMiddleware, validateUpdateProject, ProjectPolicy.canUpdate, updateProject);
-router.delete('/:slug', authMiddleware, ProjectPolicy.canDelete, deleteProject);
+router.put(
+  '/:slug',
+  authMiddleware,
+  loadProjectBySlug,
+  validateUpdateProject,
+  ProjectPolicy.canUpdate,
+  updateProject
+);
+router.delete('/:slug', authMiddleware, loadProjectBySlug, ProjectPolicy.canDelete, deleteProject);
 router.get('/:slug/stats', authMiddleware, projectStats);
 router.get('/:slug/tasks', authMiddleware, listTasks);
 router.post('/:slug/tasks', authMiddleware, validateCreateTask, TaskPolicy.canCreate, createTask);
-router.get('/:slug/team-members', authMiddleware, teamMembers);
+router.get('/:slug/team-members', authMiddleware, loadProjectBySlug, teamMembers);
+router.post(
+  '/:slug/team-members',
+  authMiddleware,
+  loadProjectBySlug,
+  ProjectPolicy.canUpdate,
+  addTeamMember
+);
+router.delete(
+  '/:slug/team-members/:userId',
+  authMiddleware,
+  loadProjectBySlug,
+  ProjectPolicy.canUpdate,
+  removeTeamMember
+);
 
 export default router;

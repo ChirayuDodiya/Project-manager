@@ -5,12 +5,14 @@ import type { Project } from '../types';
 import ProjectDetailsCard from '../components/ProjectDetailsCard';
 import KanbanBoard from '../components/KanbanBoard';
 import AddTaskModal from '../components/AddTaskModal';
+import ProjectMembersModal from '../components/ProjectMembersModal';
 
 export function ProjectDetail() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const [project, setProject] = useState<Project | null>(null);
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
+  const [isMembersModalOpen, setIsMembersModalOpen] = useState(false);
   const [boardKey, setBoardKey] = useState(0);
 
   // Fetch project details
@@ -69,6 +71,15 @@ export function ProjectDetail() {
           >
             Add Task
           </button>
+
+          {/* Member List Button */}
+          <button
+            type="button"
+            onClick={() => setIsMembersModalOpen(true)}
+            className="self-end h-10 px-6 bg-[#1e1e1e] border border-white hover:bg-[#2d2d2d] rounded-xl text-white text-xl font-medium tracking-wide transition-colors duration-200 cursor-pointer shadow-md focus:outline-none focus:ring-2 focus:ring-[#333]"
+          >
+            member list
+          </button>
         </div>
 
         {/* Kanban Board */}
@@ -81,6 +92,16 @@ export function ProjectDetail() {
             onClose={() => setIsAddTaskModalOpen(false)}
             onTaskCreated={() => setBoardKey((prev) => prev + 1)}
             slug={slug}
+          />
+        )}
+
+        {/* Project Members Modal */}
+        {slug && (
+          <ProjectMembersModal
+            isOpen={isMembersModalOpen}
+            onClose={() => setIsMembersModalOpen(false)}
+            slug={slug}
+            onMembersChanged={() => setBoardKey((prev) => prev + 1)}
           />
         )}
       </div>

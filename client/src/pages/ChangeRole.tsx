@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import api from '../services/api';
 import type { User } from '../types';
+import { useAuth } from '../hooks/useAuth';
 
 export function ChangeRole() {
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
@@ -62,6 +64,34 @@ export function ChangeRole() {
     }
   };
 
+  const handleSoftDeleteUser = async (userId: number) => {
+    try {
+      setError('');
+      const response = await api.delete(`/users/${userId}`);
+      if (response.data && response.data.success) {
+        setUsers(users.map((u) => (u.id === userId ? { ...u, is_active: false } : u)));
+      }
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { data?: { message?: string } } };
+      const msg = axiosError.response?.data?.message || 'Failed to deactivate user.';
+      setError(msg);
+    }
+  };
+
+  const handleRestoreUser = async (userId: number) => {
+    try {
+      setError('');
+      const response = await api.post(`/users/${userId}/restore`);
+      if (response.data && response.data.success) {
+        setUsers(users.map((u) => (u.id === userId ? { ...u, is_active: true } : u)));
+      }
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { data?: { message?: string } } };
+      const msg = axiosError.response?.data?.message || 'Failed to restore user.';
+      setError(msg);
+    }
+  };
+
   return (
     <main className="p-8 text-white min-h-full bg-[#121212] select-none">
       <div className="max-w-3xl mx-auto space-y-8 text-left">
@@ -93,11 +123,11 @@ export function ChangeRole() {
         {/* Members and Roles Grid */}
         <div className="space-y-4 pt-4">
           {/* Headers matching mockup style */}
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-6 pr-14">
             <div className="flex-1 text-center py-2 px-6 border border-white rounded-full text-white text-base font-semibold">
               Member name
             </div>
-            <div className="w-56 text-center py-2 px-6 border border-white rounded-full text-white text-base font-semibold">
+            <div className="w-48 text-center py-2 px-6 border border-white rounded-full text-white text-base font-semibold">
               role
             </div>
           </div>
@@ -108,37 +138,102 @@ export function ChangeRole() {
               <div className="text-center text-gray-500 py-8">No users found</div>
             ) : (
               <>
-                {users.map((u) => (
-                  <div
-                    key={u.id}
-                    className="flex items-center gap-6 py-3 px-6 hover:bg-[#1a1a1a] rounded-2xl transition-colors duration-150"
-                  >
-                    <div className="flex-1 flex flex-col justify-center min-w-0">
-                      <span className="text-white font-semibold text-base truncate">{u.name}</span>
-                      <span className="text-gray-500 text-xs truncate mt-0.5">{u.email}</span>
+                {users.map((u) => {
+                  const isSelf = currentUser?.id === u.id;
+                  return (
+                    <div
+                      key={u.id}
+                      className={`flex items-center gap-6 py-3 px-6 hover:bg-[#1a1a1a] rounded-2xl transition-all duration-150 ${
+                        !u.is_active ? 'opacity-50' : ''
+                      }`}
+                    >
+                      {/* User profile */}
+                      <div className="flex-1 flex flex-col justify-center min-w-0">
+                        <span className="text-white font-semibold text-base truncate">
+                          {u.name}
+                        </span>
+                        <span className="text-gray-500 text-xs truncate mt-0.5">{u.email}</span>
+                      </div>
+
+                      {/* Role select */}
+                      <div className="w-48 flex justify-center">
+                        <select
+                          value={u.role}
+                          disabled={isSelf}
+                          onChange={(e) =>
+                            handleRoleChange(
+                              u.id,
+                              e.target.value as 'admin' | 'manager' | 'developer'
+                            )
+                          }
+                          className={`w-full bg-[#1e1e1e] border border-[#333] text-white rounded-xl px-4 py-2 text-sm focus:outline-none transition-colors duration-150 ${
+                            isSelf
+                              ? 'opacity-50 cursor-not-allowed'
+                              : 'hover:border-emerald-500 focus:border-emerald-500 cursor-pointer'
+                          }`}
+                        >
+                          <option value="admin">admin</option>
+                          <option value="manager">manager</option>
+                          <option value="developer">developer</option>
+                        </select>
+                      </div>
+
+                      {/* Soft Delete / Restore Actions */}
+                      <div className="w-8 flex justify-end">
+                        {u.is_active ? (
+                          /* Red minus icon to deactivate */
+                          <button
+                            onClick={() => handleSoftDeleteUser(u.id)}
+                            disabled={isSelf}
+                            className={`p-1.5 bg-[#4c1c1c] border border-red-500/50 rounded-lg text-red-400 transition-colors ${
+                              isSelf
+                                ? 'opacity-40 cursor-not-allowed font-medium'
+                                : 'hover:bg-[#682525] cursor-pointer'
+                            }`}
+                            title={
+                              isSelf ? 'You cannot deactivate your own account' : 'Deactivate User'
+                            }
+                          >
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                              strokeWidth="2.5"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12h-15" />
+                            </svg>
+                          </button>
+                        ) : (
+                          /* Green plus icon to restore */
+                          <button
+                            onClick={() => handleRestoreUser(u.id)}
+                            className="p-1.5 bg-[#043314] hover:bg-[#074c1f] border border-[#10b981]/50 rounded-lg text-emerald-400 cursor-pointer transition-colors"
+                            title="Restore User"
+                          >
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                              strokeWidth="2.5"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M12 4.5v15m7.5-7.5h-15"
+                              />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    <div className="w-56 flex justify-center">
-                      <select
-                        value={u.role}
-                        onChange={(e) =>
-                          handleRoleChange(
-                            u.id,
-                            e.target.value as 'admin' | 'manager' | 'developer'
-                          )
-                        }
-                        className="w-full bg-[#1e1e1e] border border-[#333] hover:border-emerald-500 focus:border-emerald-500 text-white rounded-xl px-4 py-2 text-sm focus:outline-none transition-colors duration-150 cursor-pointer"
-                      >
-                        <option value="admin">admin</option>
-                        <option value="manager">manager</option>
-                        <option value="developer">developer</option>
-                      </select>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
 
                 {/* Pagination See More Button */}
                 {hasMore && (
-                  <div className="flex justify-center pt-8 pb-12">
+                  <div className="flex justify-center pt-8 pb-12 pr-14">
                     <button
                       onClick={() => setPage((prev) => prev + 1)}
                       className="px-8 py-2.5 bg-[#1e1e1e] hover:bg-[#2d2d2d] border border-[#333] hover:border-emerald-500/50 text-white rounded-xl text-sm font-semibold transition-all duration-200 cursor-pointer shadow-md hover:shadow-emerald-500/10 focus:outline-none"

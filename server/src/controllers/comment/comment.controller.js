@@ -3,6 +3,7 @@ import { asyncHandler } from '../../utils/asyncHandler.js';
 import prisma from '../../prisma/client.js';
 import { serializeComment } from '../../serializers/comment.serializer.js';
 import { createActivityLog } from '../../services/activity.service.js';
+import { broadcastCommentUpdated, broadcastCommentDeleted } from '../../services/socket.service.js';
 
 // PUT: /api/v1/comments/{id} — Edit own comment only (within 15 minutes)
 const updateComment = asyncHandler(async (req, res) => {
@@ -14,6 +15,13 @@ const updateComment = asyncHandler(async (req, res) => {
 
   const comment = await prisma.comments.findFirst({
     where: { id: commentId, deleted_at: null },
+    include: {
+      tasks: {
+        include: {
+          projects: true,
+        },
+      },
+    },
   });
 
   if (!comment) {
@@ -50,6 +58,12 @@ const updateComment = asyncHandler(async (req, res) => {
     console.error('Activity log failed:', error);
   });
 
+  broadcastCommentUpdated(
+    req,
+    comment.tasks.projects.slug,
+    serializeComment({ ...updatedComment, user: updatedComment.users })
+  );
+
   return successResponse(
     res,
     serializeComment({ ...updatedComment, user: updatedComment.users }),
@@ -67,6 +81,13 @@ const deleteComment = asyncHandler(async (req, res) => {
 
   const comment = await prisma.comments.findFirst({
     where: { id: commentId, deleted_at: null },
+    include: {
+      tasks: {
+        include: {
+          projects: true,
+        },
+      },
+    },
   });
 
   if (!comment) {
@@ -100,6 +121,8 @@ const deleteComment = asyncHandler(async (req, res) => {
   }).catch((error) => {
     console.error('Activity log failed:', error);
   });
+
+  broadcastCommentDeleted(req, comment.tasks.projects.slug, commentId);
 
   return successResponse(res, null, 'Comment deleted successfully');
 });

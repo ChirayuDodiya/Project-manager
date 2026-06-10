@@ -14,7 +14,6 @@ export function ProjectDetail() {
   const [project, setProject] = useState<Project | null>(null);
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
   const [isMembersModalOpen, setIsMembersModalOpen] = useState(false);
-  const [boardKey, setBoardKey] = useState(0);
 
   // Fetch project details
   useEffect(() => {
@@ -96,14 +95,13 @@ export function ProjectDetail() {
         </div>
 
         {/* Kanban Board */}
-        {slug && <KanbanBoard key={boardKey} slug={slug} />}
+        {slug && <KanbanBoard slug={slug} />}
 
         {/* Add Task Modal */}
         {slug && (
           <AddTaskModal
             isOpen={isAddTaskModalOpen}
             onClose={() => setIsAddTaskModalOpen(false)}
-            onTaskCreated={() => setBoardKey((prev) => prev + 1)}
             slug={slug}
           />
         )}
@@ -114,7 +112,6 @@ export function ProjectDetail() {
             isOpen={isMembersModalOpen}
             onClose={() => setIsMembersModalOpen(false)}
             slug={slug}
-            onMembersChanged={() => setBoardKey((prev) => prev + 1)}
           />
         )}
       </div>

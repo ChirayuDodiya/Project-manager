@@ -6,11 +6,10 @@ import { validateAddTaskForm } from '../utils/validation';
 interface AddTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onTaskCreated: () => void;
   slug: string;
 }
 
-export function AddTaskModal({ isOpen, onClose, onTaskCreated, slug }: AddTaskModalProps) {
+export function AddTaskModal({ isOpen, onClose, slug }: AddTaskModalProps) {
   // Form state
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -108,7 +107,6 @@ export function AddTaskModal({ isOpen, onClose, onTaskCreated, slug }: AddTaskMo
         setActualHours('');
         setSelectedUser(null);
         setSearchQuery('');
-        onTaskCreated();
         onClose();
       }
     } catch (err: unknown) {

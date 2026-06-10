@@ -9,6 +9,8 @@ import {
   broadcastTaskStatusChange,
   broadcastTaskAssigned,
   broadcastCommentAdded,
+  broadcastTaskDeleted,
+  broadcastTaskUpdated,
 } from '../../services/socket.service.js';
 
 // PUT: /api/v1/tasks/{id} — Update task
@@ -34,6 +36,8 @@ const updateTask = asyncHandler(async (req, res) => {
   }).catch((error) => {
     console.error('Activity log failed:', error);
   });
+
+  broadcastTaskUpdated(req, req.project.slug, serializeTask(updatedTask));
 
   return successResponse(res, serializeTask(updatedTask), 'Task updated successfully');
 });
@@ -173,6 +177,8 @@ const deleteTask = asyncHandler(async (req, res) => {
   }).catch((error) => {
     console.error('Activity log failed:', error);
   });
+
+  broadcastTaskDeleted(req, req.project.slug, taskId);
 
   return successResponse(res, null, 'Task deleted successfully');
 });

@@ -9,15 +9,85 @@ interface TaskCommentsProps {
   onCommentAdded?: () => void;
 }
 
+// Helper functions for immutable tree updates
+const addCommentToTree = (list: TaskComment[], newComment: TaskComment): TaskComment[] => {
+  if (!newComment.parent_id) {
+    if (list.some((c) => c.id === newComment.id)) return list;
+    return [...list, { ...newComment, replies: [] }];
+  }
+  return list.map((c) => {
+    if (c.id === newComment.parent_id) {
+      if (c.replies?.some((r) => r.id === newComment.id)) return c;
+      return { ...c, replies: [...(c.replies || []), { ...newComment, replies: [] }] };
+    }
+    if (c.replies && c.replies.length > 0) {
+      return { ...c, replies: addCommentToTree(c.replies, newComment) };
+    }
+    return c;
+  });
+};
+
+const updateCommentInTree = (
+  list: TaskComment[],
+  commentId: number,
+  updatedBody: string
+): TaskComment[] => {
+  return list.map((c) => {
+    if (c.id === commentId) {
+      return { ...c, body: updatedBody };
+    }
+    if (c.replies && c.replies.length > 0) {
+      return { ...c, replies: updateCommentInTree(c.replies, commentId, updatedBody) };
+    }
+    return c;
+  });
+};
+
+const deleteCommentFromTree = (list: TaskComment[], commentId: number): TaskComment[] => {
+  let repliesToPromote: TaskComment[] = [];
+  const filterAndCollect = (items: TaskComment[]): TaskComment[] => {
+    return items
+      .filter((item) => {
+        if (item.id === commentId) {
+          repliesToPromote = item.replies || [];
+          return false;
+        }
+        return true;
+      })
+      .map((item) => {
+        if (item.replies && item.replies.length > 0) {
+          return { ...item, replies: filterAndCollect(item.replies) };
+        }
+        return item;
+      });
+  };
+
+  const updatedList = filterAndCollect(list);
+  if (repliesToPromote.length > 0) {
+    return [...updatedList, ...repliesToPromote];
+  }
+  return updatedList;
+};
+
 interface CommentNodeProps {
   comment: TaskComment;
   onReply: (comment: TaskComment) => void;
   depth?: number;
   currentUser: User | null | undefined;
-  onRefresh: () => void;
+  onCommentUpdated: (id: number, body: string) => void;
+  onCommentDeleted: (id: number) => void;
+  onCommentAdded?: () => void;
 }
 
-function CommentNode({ comment, onReply, depth = 0, currentUser, onRefresh }: CommentNodeProps) {
+function CommentNode({
+  comment,
+  onReply,
+  depth = 0,
+  currentUser,
+  onCommentUpdated,
+  onCommentDeleted,
+  onCommentAdded,
+}: CommentNodeProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editBody, setEditBody] = useState(comment.body);
   const [error, setError] = useState<string | null>(null);
@@ -72,7 +142,10 @@ function CommentNode({ comment, onReply, depth = 0, currentUser, onRefresh }: Co
       const res = await api.put(`/comments/${comment.id}`, { body: trimmedBody });
       if (res.data && res.data.success) {
         setIsEditing(false);
-        onRefresh();
+        onCommentUpdated(comment.id, trimmedBody);
+        if (onCommentAdded) {
+          onCommentAdded();
+        }
       } else {
         setError(res.data?.message || 'Failed to update comment');
       }
@@ -88,7 +161,10 @@ function CommentNode({ comment, onReply, depth = 0, currentUser, onRefresh }: Co
       setError(null);
       const res = await api.delete(`/comments/${comment.id}`);
       if (res.data && res.data.success) {
-        onRefresh();
+        onCommentDeleted(comment.id);
+        if (onCommentAdded) {
+          onCommentAdded();
+        }
       } else {
         setError(res.data?.message || 'Failed to delete comment');
       }
@@ -196,7 +272,9 @@ function CommentNode({ comment, onReply, depth = 0, currentUser, onRefresh }: Co
               onReply={onReply}
               depth={depth + 1}
               currentUser={currentUser}
-              onRefresh={onRefresh}
+              onCommentUpdated={onCommentUpdated}
+              onCommentDeleted={onCommentDeleted}
+              onCommentAdded={onCommentAdded}
             />
           ))}
         </div>
@@ -210,17 +288,6 @@ export function TaskComments({ taskId, onCommentAdded }: TaskCommentsProps) {
   const [comments, setComments] = useState<TaskComment[]>([]);
   const [newCommentBody, setNewCommentBody] = useState('');
   const [replyingTo, setReplyingTo] = useState<TaskComment | null>(null);
-
-  const fetchComments = async () => {
-    try {
-      const res = await api.get(`/tasks/${taskId}/comments`);
-      if (res.data && res.data.success) {
-        setComments(res.data.data);
-      }
-    } catch (err) {
-      console.error('Failed to fetch comments:', err);
-    }
-  };
 
   useEffect(() => {
     let active = true;
@@ -248,18 +315,37 @@ export function TaskComments({ taskId, onCommentAdded }: TaskCommentsProps) {
 
     const handleCommentAdded = (newComment: TaskComment) => {
       if (newComment.task_id === taskId) {
-        void fetchComments();
+        setComments((prev) => addCommentToTree(prev, newComment));
         if (onCommentAdded) {
           onCommentAdded();
         }
       }
     };
 
+    const handleCommentUpdated = (updatedComment: TaskComment) => {
+      if (updatedComment.task_id === taskId) {
+        setComments((prev) => updateCommentInTree(prev, updatedComment.id, updatedComment.body));
+        if (onCommentAdded) {
+          onCommentAdded();
+        }
+      }
+    };
+
+    const handleCommentDeleted = ({ commentId }: { commentId: number }) => {
+      setComments((prev) => deleteCommentFromTree(prev, commentId));
+      if (onCommentAdded) {
+        onCommentAdded();
+      }
+    };
+
     socket.on('comment:added', handleCommentAdded);
+    socket.on('comment:updated', handleCommentUpdated);
+    socket.on('comment:deleted', handleCommentDeleted);
     return () => {
       socket.off('comment:added', handleCommentAdded);
+      socket.off('comment:updated', handleCommentUpdated);
+      socket.off('comment:deleted', handleCommentDeleted);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taskId, onCommentAdded]);
 
   const handleSubmitComment = async (e: React.FormEvent) => {
@@ -275,7 +361,7 @@ export function TaskComments({ taskId, onCommentAdded }: TaskCommentsProps) {
       if (res.data && res.data.success) {
         setNewCommentBody('');
         setReplyingTo(null);
-        await fetchComments();
+        setComments((prev) => addCommentToTree(prev, res.data.data));
         if (onCommentAdded) {
           onCommentAdded();
         }
@@ -299,12 +385,13 @@ export function TaskComments({ taskId, onCommentAdded }: TaskCommentsProps) {
                 comment={comment}
                 onReply={setReplyingTo}
                 currentUser={currentUser}
-                onRefresh={async () => {
-                  await fetchComments();
-                  if (onCommentAdded) {
-                    onCommentAdded();
-                  }
+                onCommentUpdated={(id, body) => {
+                  setComments((prev) => updateCommentInTree(prev, id, body));
                 }}
+                onCommentDeleted={(id) => {
+                  setComments((prev) => deleteCommentFromTree(prev, id));
+                }}
+                onCommentAdded={onCommentAdded}
               />
             ))
           ) : (

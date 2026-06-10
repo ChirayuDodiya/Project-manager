@@ -82,7 +82,7 @@ export function useKanbanTasks(slug: string) {
     }
   }, [slug, fetchTasksForStatus, refreshKey]);
 
-  // Listen to real-time status change and assignee updates
+  // Listen to real-time status change, assignment, updates, creation, and deletion
   useEffect(() => {
     if (!slug) return;
 
@@ -99,7 +99,7 @@ export function useKanbanTasks(slug: string) {
       });
     };
 
-    const handleTaskAssigned = (updatedTask: ProjectTask) => {
+    const handleTaskUpdated = (updatedTask: ProjectTask) => {
       setTasksByStatus((prev) => {
         const cleaned: Record<ProjectTask['status'], ProjectTask[]> = {
           todo: prev.todo.map((t) => (t.id === updatedTask.id ? updatedTask : t)),
@@ -111,12 +111,41 @@ export function useKanbanTasks(slug: string) {
       });
     };
 
+    const handleTaskCreated = (newTask: ProjectTask) => {
+      setTasksByStatus((prev) => {
+        const currentList = prev[newTask.status] || [];
+        if (currentList.some((t) => t.id === newTask.id)) return prev;
+        return {
+          ...prev,
+          [newTask.status]: [newTask, ...currentList],
+        };
+      });
+    };
+
+    const handleTaskDeleted = ({ taskId }: { taskId: number }) => {
+      setTasksByStatus((prev) => {
+        const cleaned: Record<ProjectTask['status'], ProjectTask[]> = {
+          todo: prev.todo.filter((t) => t.id !== taskId),
+          in_progress: prev.in_progress.filter((t) => t.id !== taskId),
+          in_review: prev.in_review.filter((t) => t.id !== taskId),
+          done: prev.done.filter((t) => t.id !== taskId),
+        };
+        return cleaned;
+      });
+    };
+
     socket.on('task:status_changed', handleStatusChanged);
-    socket.on('task:assigned', handleTaskAssigned);
+    socket.on('task:assigned', handleTaskUpdated);
+    socket.on('task:created', handleTaskCreated);
+    socket.on('task:updated', handleTaskUpdated);
+    socket.on('task:deleted', handleTaskDeleted);
 
     return () => {
       socket.off('task:status_changed', handleStatusChanged);
-      socket.off('task:assigned', handleTaskAssigned);
+      socket.off('task:assigned', handleTaskUpdated);
+      socket.off('task:created', handleTaskCreated);
+      socket.off('task:updated', handleTaskUpdated);
+      socket.off('task:deleted', handleTaskDeleted);
     };
   }, [slug]);
 

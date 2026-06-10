@@ -20,3 +20,28 @@ export const broadcastCommentAdded = (req, projectSlug, comment) => {
 export const broadcastTaskAssigned = (req, projectSlug, task) => {
   broadcastToProject(req, projectSlug, 'task:assigned', task);
 };
+
+// Broadcasts when a new task is created
+export const broadcastTaskCreated = (req, projectSlug, task) => {
+  broadcastToProject(req, projectSlug, 'task:created', task);
+};
+
+// Broadcasts when a task is deleted
+export const broadcastTaskDeleted = (req, projectSlug, taskId) => {
+  broadcastToProject(req, projectSlug, 'task:deleted', { taskId });
+};
+
+// Broadcasts when a task is updated (e.g. title, desc, priority, etc)
+export const broadcastTaskUpdated = (req, projectSlug, task) => {
+  broadcastToProject(req, projectSlug, 'task:updated', task);
+};
+
+// Broadcasts when a comment is updated
+export const broadcastCommentUpdated = (req, projectSlug, comment) => {
+  broadcastToProject(req, projectSlug, 'comment:updated', comment);
+};
+
+// Broadcasts when a comment is deleted
+export const broadcastCommentDeleted = (req, projectSlug, commentId) => {
+  broadcastToProject(req, projectSlug, 'comment:deleted', { commentId });
+};

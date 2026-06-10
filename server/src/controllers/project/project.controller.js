@@ -6,6 +6,7 @@ import { serializeProject } from '../../serializers/project.serializer.js';
 import { serializeTask } from '../../serializers/task.serializer.js';
 import { createActivityLog } from '../../services/activity.service.js';
 import { buildSlug } from '../../services/slug.service.js';
+import { broadcastTaskCreated } from '../../services/socket.service.js';
 
 // GET: /api/v1/projects — List with filtering (status, owner), sorting, and pagination
 const listProjects = asyncHandler(async (req, res) => {
@@ -460,6 +461,8 @@ const createTask = asyncHandler(async (req, res) => {
   }).catch((error) => {
     console.error('Activity log failed:', error);
   });
+
+  broadcastTaskCreated(req, project.slug, serializeTask(task));
 
   return successResponse(res, serializeTask(task), 'Task created successfully', 201);
 });

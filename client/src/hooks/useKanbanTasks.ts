@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../services/api';
 import type { ProjectTask } from '../types';
+import { socket } from '../services/socket';
 
 export function useKanbanTasks(slug: string) {
   const [tasksByStatus, setTasksByStatus] = useState<Record<ProjectTask['status'], ProjectTask[]>>({
@@ -80,6 +81,44 @@ export function useKanbanTasks(slug: string) {
       return () => clearTimeout(timer);
     }
   }, [slug, fetchTasksForStatus, refreshKey]);
+
+  // Listen to real-time status change and assignee updates
+  useEffect(() => {
+    if (!slug) return;
+
+    const handleStatusChanged = (updatedTask: ProjectTask) => {
+      setTasksByStatus((prev) => {
+        const cleaned: Record<ProjectTask['status'], ProjectTask[]> = {
+          todo: prev.todo.filter((t) => t.id !== updatedTask.id),
+          in_progress: prev.in_progress.filter((t) => t.id !== updatedTask.id),
+          in_review: prev.in_review.filter((t) => t.id !== updatedTask.id),
+          done: prev.done.filter((t) => t.id !== updatedTask.id),
+        };
+        cleaned[updatedTask.status] = [updatedTask, ...cleaned[updatedTask.status]];
+        return cleaned;
+      });
+    };
+
+    const handleTaskAssigned = (updatedTask: ProjectTask) => {
+      setTasksByStatus((prev) => {
+        const cleaned: Record<ProjectTask['status'], ProjectTask[]> = {
+          todo: prev.todo.map((t) => (t.id === updatedTask.id ? updatedTask : t)),
+          in_progress: prev.in_progress.map((t) => (t.id === updatedTask.id ? updatedTask : t)),
+          in_review: prev.in_review.map((t) => (t.id === updatedTask.id ? updatedTask : t)),
+          done: prev.done.map((t) => (t.id === updatedTask.id ? updatedTask : t)),
+        };
+        return cleaned;
+      });
+    };
+
+    socket.on('task:status_changed', handleStatusChanged);
+    socket.on('task:assigned', handleTaskAssigned);
+
+    return () => {
+      socket.off('task:status_changed', handleStatusChanged);
+      socket.off('task:assigned', handleTaskAssigned);
+    };
+  }, [slug]);
 
   const handleSeeMore = (status: ProjectTask['status']) => {
     const nextPage = (pagesByStatus[status] || 1) + 1;

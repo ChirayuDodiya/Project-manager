@@ -4,12 +4,26 @@ import { AuthContext } from './AuthContext';
 import type { User } from '../types/auth';
 import api from '../services/api';
 
+import { socket } from '../services/socket';
+
 interface AuthProviderProps {
   children: ReactNode;
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null | undefined>(undefined);
+
+  // Manage socket connection lifecycle
+  useEffect(() => {
+    if (user) {
+      socket.connect();
+    } else {
+      socket.disconnect();
+    }
+    return () => {
+      socket.disconnect();
+    };
+  }, [user]);
 
   // Verify session validity via /auth/me
   const checkAuth = useCallback(async () => {

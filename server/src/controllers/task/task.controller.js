@@ -5,6 +5,11 @@ import { serializeTask } from '../../serializers/task.serializer.js';
 import { serializeComment } from '../../serializers/comment.serializer.js';
 import { serializeActivity } from '../../serializers/activity.serializer.js';
 import { createActivityLog } from '../../services/activity.service.js';
+import {
+  broadcastTaskStatusChange,
+  broadcastTaskAssigned,
+  broadcastCommentAdded,
+} from '../../services/socket.service.js';
 
 // PUT: /api/v1/tasks/{id} — Update task
 const updateTask = asyncHandler(async (req, res) => {
@@ -79,6 +84,8 @@ const changeTaskStatus = asyncHandler(async (req, res) => {
     console.error('Activity log failed:', error);
   });
 
+  broadcastTaskStatusChange(req, req.project.slug, serializeTask(updatedTask));
+
   return successResponse(res, serializeTask(updatedTask), 'Task status updated successfully');
 });
 
@@ -115,6 +122,8 @@ const assignTask = asyncHandler(async (req, res) => {
   }).catch((error) => {
     console.error('Activity log failed:', error);
   });
+
+  broadcastTaskAssigned(req, req.project.slug, serializeTask(updatedTask));
 
   return successResponse(res, serializeTask(updatedTask), 'Task assignment updated successfully');
 });
@@ -243,6 +252,12 @@ const createTaskComment = asyncHandler(async (req, res) => {
   }).catch((error) => {
     console.error('Activity log failed:', error);
   });
+
+  broadcastCommentAdded(
+    req,
+    req.project.slug,
+    serializeComment({ ...comment, user: comment.users })
+  );
 
   return successResponse(
     res,

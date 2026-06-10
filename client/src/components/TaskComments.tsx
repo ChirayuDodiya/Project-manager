@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import api from '../services/api';
 import type { TaskComment, User } from '../types';
 import { useAuth } from '../hooks/useAuth';
+import { socket } from '../services/socket';
 
 interface TaskCommentsProps {
   taskId: number;
@@ -241,6 +242,25 @@ export function TaskComments({ taskId, onCommentAdded }: TaskCommentsProps) {
       active = false;
     };
   }, [taskId]);
+
+  useEffect(() => {
+    if (!taskId) return;
+
+    const handleCommentAdded = (newComment: TaskComment) => {
+      if (newComment.task_id === taskId) {
+        void fetchComments();
+        if (onCommentAdded) {
+          onCommentAdded();
+        }
+      }
+    };
+
+    socket.on('comment:added', handleCommentAdded);
+    return () => {
+      socket.off('comment:added', handleCommentAdded);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [taskId, onCommentAdded]);
 
   const handleSubmitComment = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -5,6 +5,7 @@ import type { ProjectTask } from '../types';
 import TaskDetailComponent from '../components/TaskDetailComponent';
 import TaskComments from '../components/TaskComments';
 import TaskActivityTimeline from '../components/TaskActivityTimeline';
+import { socket } from '../services/socket';
 
 export function TaskDetail() {
   const { slug, taskId } = useParams<{ slug: string; taskId: string }>();
@@ -32,6 +33,38 @@ export function TaskDetail() {
     }
     return () => {
       active = false;
+    };
+  }, [taskId]);
+
+  // Join/leave project room
+  useEffect(() => {
+    if (slug) {
+      socket.emit('join:project', slug);
+    }
+    return () => {
+      if (slug) {
+        socket.emit('leave:project', slug);
+      }
+    };
+  }, [slug]);
+
+  // Listen to task updates in real-time
+  useEffect(() => {
+    if (!taskId) return;
+    const targetTaskId = Number(taskId);
+
+    const handleTaskUpdated = (updatedTask: ProjectTask) => {
+      if (updatedTask.id === targetTaskId) {
+        setTask(updatedTask);
+      }
+    };
+
+    socket.on('task:status_changed', handleTaskUpdated);
+    socket.on('task:assigned', handleTaskUpdated);
+
+    return () => {
+      socket.off('task:status_changed', handleTaskUpdated);
+      socket.off('task:assigned', handleTaskUpdated);
     };
   }, [taskId]);
 

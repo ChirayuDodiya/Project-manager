@@ -40,6 +40,7 @@ export interface Project {
 
 export interface TaskComment {
   id: number;
+  task_id?: number;
   body: string;
   user: {
     id: number;

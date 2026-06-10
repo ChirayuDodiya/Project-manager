@@ -6,6 +6,7 @@ import ProjectDetailsCard from '../components/ProjectDetailsCard';
 import KanbanBoard from '../components/KanbanBoard';
 import AddTaskModal from '../components/AddTaskModal';
 import ProjectMembersModal from '../components/ProjectMembersModal';
+import { socket } from '../services/socket';
 
 export function ProjectDetail() {
   const { slug } = useParams<{ slug: string }>();
@@ -33,6 +34,18 @@ export function ProjectDetail() {
     }
     return () => {
       active = false;
+    };
+  }, [slug]);
+
+  // Join/leave project socket room on mount/unmount
+  useEffect(() => {
+    if (slug) {
+      socket.emit('join:project', slug);
+    }
+    return () => {
+      if (slug) {
+        socket.emit('leave:project', slug);
+      }
     };
   }, [slug]);
 

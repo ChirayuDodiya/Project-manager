@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import type { ProjectTask } from '../types';
 import type { User } from '../types/auth';
@@ -15,6 +16,24 @@ export function TaskDetailComponent({
   slug,
   onUpdate,
 }: TaskDetailComponentProps) {
+  const navigate = useNavigate();
+
+  // Delete task using DELETE /tasks/:id
+  const handleDeleteTask = async () => {
+    if (window.confirm(`Are you sure you want to delete task "${task.title}"?`)) {
+      try {
+        const res = await api.delete(`/tasks/${task.id}`);
+        if (res.data && res.data.success) {
+          navigate(`/projects/${slug}`);
+        }
+      } catch (err: unknown) {
+        const axiosError = err as { response?: { data?: { message?: string } } };
+        const msg = axiosError.response?.data?.message || 'Failed to delete task.';
+        alert(msg);
+      }
+    }
+  };
+
   // Input states for inline editing
   const [editTitle, setEditTitle] = useState(task.title);
   const [editDesc, setEditDesc] = useState(task.description || '');
@@ -544,6 +563,33 @@ export function TaskDetailComponent({
         ) : (
           <div />
         )}
+      </div>
+
+      {/* Divider */}
+      <hr className="border-white/10" />
+
+      {/* Delete Task Button Row */}
+      <div className="flex justify-end pt-2">
+        <button
+          type="button"
+          onClick={handleDeleteTask}
+          className="px-6 py-2 bg-[#4c1c1c] border border-red-500/40 hover:bg-[#682525] rounded-xl text-red-200 text-sm font-semibold transition-colors duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-500 flex items-center gap-2"
+        >
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+            />
+          </svg>
+          Delete Task
+        </button>
       </div>
     </div>
   );

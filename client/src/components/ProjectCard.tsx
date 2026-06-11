@@ -56,9 +56,22 @@ export function ProjectCard({ project, onDeleteSuccess }: ProjectCardProps) {
           <button
             type="button"
             onClick={handleDelete}
-            className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-red-950/40 border border-red-500/50 hover:bg-red-900/60 hover:border-red-400 text-red-200 transition-colors cursor-pointer select-none focus:outline-none"
+            className="p-1.5 text-xs font-semibold rounded-lg bg-[#3a1515] border border-red-500/35 hover:bg-[#541e1e] hover:border-red-400 text-red-400 transition-colors cursor-pointer select-none focus:outline-none flex items-center justify-center"
+            title="Delete Project"
           >
-            del
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+              />
+            </svg>
           </button>
           <span
             className={`px-3 py-1 text-md font-semibold rounded-full capitalize bg-[#2d2d2d] text-zinc-300 border border-zinc-700/60`}

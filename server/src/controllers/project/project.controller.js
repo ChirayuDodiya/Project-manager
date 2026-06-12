@@ -60,15 +60,13 @@ const listProjects = asyncHandler(async (req, res) => {
 
   const [total, projects] = await Promise.all([
     prisma.projects.count({ where }),
-    prisma.projects.findMany({
+    prisma.projects.findPaginated(
       where,
-      include: {
-        users: true,
-      },
-      orderBy: { [orderField]: orderDirection },
-      skip: (pageNumber - 1) * pageSize,
-      take: pageSize,
-    }),
+      orderField,
+      orderDirection,
+      (pageNumber - 1) * pageSize,
+      pageSize
+    ),
   ]);
 
   const projectIds = projects.map((p) => p.id);
@@ -167,51 +165,13 @@ const showProject = asyncHandler(async (req, res) => {
     return errorResponse(res, 'Project not found', 404);
   }
 
-  const taskStats = await prisma.tasks.groupBy({
-    by: ['status'],
-    where: {
-      project_id: project.id,
-      deleted_at: null,
-    },
-    _count: {
-      _all: true,
-    },
-  });
-
-  const aggregate = await prisma.tasks.aggregate({
-    where: {
-      project_id: project.id,
-      deleted_at: null,
-    },
-    _count: { _all: true },
-    _sum: {
-      actual_hours: true,
-    },
-  });
-
-  const overdueCount = await prisma.tasks.count({
-    where: {
-      project_id: project.id,
-      deleted_at: null,
-      due_date: {
-        lt: new Date(),
-      },
-      status: {
-        not: 'done',
-      },
-    },
-  });
-
-  const statusCounts = taskStats.reduce((acc, item) => {
-    acc[item.status] = item._count._all;
-    return acc;
-  }, {});
+  const stats = await prisma.tasks.getProjectSummaryStats(project.id);
 
   const summary = {
-    total_tasks: aggregate._count._all,
-    total_hours: aggregate._sum.actual_hours ? aggregate._sum.actual_hours.toString() : '0',
-    overdue_count: overdueCount,
-    status_counts: statusCounts,
+    total_tasks: stats.total_tasks,
+    total_hours: stats.total_hours,
+    overdue_count: stats.overdue_count,
+    status_counts: stats.task_count_by_status,
   };
 
   return successResponse(res, {
@@ -309,47 +269,12 @@ const projectStats = asyncHandler(async (req, res) => {
     return errorResponse(res, 'Project not found', 404);
   }
 
-  const statusGroups = await prisma.tasks.groupBy({
-    by: ['status'],
-    where: {
-      project_id: project.id,
-      deleted_at: null,
-    },
-    _count: { _all: true },
-  });
-
-  const totalHours = await prisma.tasks.aggregate({
-    where: {
-      project_id: project.id,
-      deleted_at: null,
-    },
-    _sum: {
-      actual_hours: true,
-    },
-  });
-
-  const overdueCount = await prisma.tasks.count({
-    where: {
-      project_id: project.id,
-      deleted_at: null,
-      due_date: {
-        lt: new Date(),
-      },
-      status: {
-        not: 'done',
-      },
-    },
-  });
-
-  const statusCounts = statusGroups.reduce((acc, item) => {
-    acc[item.status] = item._count._all;
-    return acc;
-  }, {});
+  const stats = await prisma.tasks.getProjectSummaryStats(project.id);
 
   const statsData = {
-    task_count_by_status: statusCounts,
-    total_hours: totalHours._sum.actual_hours ? totalHours._sum.actual_hours.toString() : '0',
-    overdue_count: overdueCount,
+    task_count_by_status: stats.task_count_by_status,
+    total_hours: stats.total_hours,
+    overdue_count: stats.overdue_count,
   };
 
   // Cache statsData in Redis
@@ -402,38 +327,27 @@ const listTasks = asyncHandler(async (req, res) => {
     return errorResponse(res, 'Invalid priority filter', 400);
   }
 
-  const where = {
-    project_id: project.id,
-    deleted_at: null,
-  };
-
-  if (status) {
-    where.status = status;
-  }
-
-  if (priority) {
-    where.priority = priority;
-  }
-
-  if (assigned_to) {
-    where.assigned_to = assigned_to;
-  }
+  const whereFilters = {};
+  if (status) whereFilters.status = status;
+  if (priority) whereFilters.priority = priority;
+  if (assigned_to) whereFilters.assigned_to = assigned_to;
 
   const [total, tasks] = await Promise.all([
     prisma.tasks.count({
-      where,
-    }),
-    prisma.tasks.findMany({
-      where,
-      include: {
-        users: true,
+      where: {
+        project_id: project.id,
+        deleted_at: null,
+        ...whereFilters,
       },
-      orderBy: {
-        [orderField]: orderDirection,
-      },
-      skip: (pageNumber - 1) * pageSize,
-      take: pageSize,
     }),
+    prisma.tasks.findForProject(
+      project.id,
+      whereFilters,
+      orderField,
+      orderDirection,
+      (pageNumber - 1) * pageSize,
+      pageSize
+    ),
   ]);
 
   const serialized = tasks.map((task) => serializeTask(task));
@@ -496,19 +410,7 @@ const teamMembers = asyncHandler(async (req, res) => {
     return errorResponse(res, 'Project not found', 404);
   }
 
-  const members = await prisma.team_members.findMany({
-    where: {
-      project_id: project.id,
-      deleted_at: null,
-      users: {
-        is_active: true,
-        deleted_at: null,
-      },
-    },
-    include: {
-      users: true,
-    },
-  });
+  const members = await prisma.team_members.findActiveForProject(project.id);
 
   const usersList = members.map((m) => m.users).filter(Boolean);
   const serializedUsers = usersList.map((user) => serializeUser(user));

@@ -198,11 +198,7 @@ const listTaskComments = asyncHandler(async (req, res) => {
   const task = req.task;
   const taskId = task.id;
 
-  const comments = await prisma.comments.findMany({
-    where: { task_id: taskId, deleted_at: null },
-    include: { users: true },
-    orderBy: { created_at: 'asc' },
-  });
+  const comments = await prisma.comments.findForTask(taskId);
 
   const serializedComments = comments.map((c) => ({
     ...serializeComment({ ...c, user: c.users }),
@@ -288,22 +284,7 @@ const listTaskActivities = asyncHandler(async (req, res) => {
   const task = req.task;
   const taskId = task.id;
 
-  const taskComments = await prisma.comments.findMany({
-    where: { task_id: taskId },
-    select: { id: true },
-  });
-  const commentIds = taskComments.map((c) => c.id);
-
-  const OR_clause = [{ subject_type: 'task', subject_id: taskId }];
-  if (commentIds.length > 0) {
-    OR_clause.push({ subject_type: 'comment', subject_id: { in: commentIds } });
-  }
-
-  const logs = await prisma.activity_logs.findMany({
-    where: { OR: OR_clause },
-    include: { users: true },
-    orderBy: { created_at: 'desc' },
-  });
+  const logs = await prisma.activity_logs.findForTask(taskId);
 
   const serializedLogs = logs.map(serializeActivity);
 

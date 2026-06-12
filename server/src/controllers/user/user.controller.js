@@ -23,14 +23,11 @@ const listUsers = asyncHandler(async (req, res) => {
 
   const [total, users] = await Promise.all([
     prisma.users.count({ where }),
-    prisma.users.findMany({
+    prisma.users.findPaginated(
       where,
-      orderBy: {
-        name: 'asc',
-      },
-      skip: (pageNumber - 1) * pageSize,
-      take: pageSize,
-    }),
+      (pageNumber - 1) * pageSize,
+      pageSize
+    ),
   ]);
 
   const serialized = users.map((user) => serializeUser(user));

@@ -3,9 +3,11 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import type { Project, User } from '../types';
 import ProjectDetailsCard from '../components/ProjectDetailsCard';
+import ProjectStats from '../components/ProjectStats';
 import KanbanBoard from '../components/KanbanBoard';
 import AddTaskModal from '../components/AddTaskModal';
 import ProjectMembersModal from '../components/ProjectMembersModal';
+
 import { socket } from '../services/socket';
 import { useAuth } from '../hooks/useAuth';
 
@@ -71,7 +73,7 @@ export function ProjectDetail() {
   return (
     <main className="p-2 text-white min-h-full bg-[#121212] select-none">
       <div className=" mx-auto space-y-8 text-left">
-        <div className="flex items-start gap-6">
+        <div className="flex flex-wrap items-start gap-6">
           {/* Back button */}
           <Link
             to="/"
@@ -84,7 +86,11 @@ export function ProjectDetail() {
           {/* Project Details Card */}
           <ProjectDetailsCard project={project} onProjectUpdated={handleProjectUpdated} />
 
+          {/* Project Statistics */}
+          {slug && <ProjectStats slug={slug} />}
+
           {/* Active Viewers presence */}
+
           {viewers.length > 0 && (
             <div className="self-end h-10 flex items-center gap-2 mr-4 bg-[#1a1a1e]/60 border border-neutral-800/80 px-4 rounded-full select-none shadow-sm">
               <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">

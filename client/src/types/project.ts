@@ -71,3 +71,15 @@ export interface ActivityLog {
     role: string;
   } | null;
 }
+
+export interface ProjectStatsData {
+  task_count_by_status: {
+    todo?: number;
+    in_progress?: number;
+    in_review?: number;
+    done?: number;
+    [status: string]: number | undefined;
+  };
+  total_hours: string;
+  overdue_count: number;
+}

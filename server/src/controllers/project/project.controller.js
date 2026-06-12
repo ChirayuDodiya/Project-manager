@@ -7,6 +7,11 @@ import { serializeTask } from '../../serializers/task.serializer.js';
 import { createActivityLog } from '../../services/activity.service.js';
 import { buildSlug } from '../../services/slug.service.js';
 import { broadcastTaskCreated } from '../../services/socket.service.js';
+import {
+  getCachedStats,
+  setCachedStats,
+  invalidateProjectStats,
+} from '../../services/redis.service.js';
 
 // GET: /api/v1/projects — List with filtering (status, owner), sorting, and pagination
 const listProjects = asyncHandler(async (req, res) => {
@@ -291,6 +296,13 @@ const deleteProject = asyncHandler(async (req, res) => {
 // GET: /api/v1/projects/{slug}/stats — Task count by status, total hours, overdue count
 const projectStats = asyncHandler(async (req, res) => {
   const { slug } = req.params;
+
+  // Try retrieving cached stats first
+  const cachedData = await getCachedStats(slug);
+  if (cachedData) {
+    return successResponse(res, cachedData, 'Project statistics retrieved from cache');
+  }
+
   const project = await getProjectBySlug(slug);
 
   if (!project) {
@@ -334,11 +346,16 @@ const projectStats = asyncHandler(async (req, res) => {
     return acc;
   }, {});
 
-  return successResponse(res, {
+  const statsData = {
     task_count_by_status: statusCounts,
     total_hours: totalHours._sum.actual_hours ? totalHours._sum.actual_hours.toString() : '0',
     overdue_count: overdueCount,
-  });
+  };
+
+  // Cache statsData in Redis
+  await setCachedStats(slug, statsData);
+
+  return successResponse(res, statsData);
 });
 
 // GET: /api/v1/projects/{slug}/tasks — List with filtering (status, priority, assigned_to), sorting, pagination
@@ -461,6 +478,9 @@ const createTask = asyncHandler(async (req, res) => {
   }).catch((error) => {
     console.error('Activity log failed:', error);
   });
+
+  // Invalidate Redis cache for project stats
+  await invalidateProjectStats(project.slug);
 
   broadcastTaskCreated(req, project.slug, serializeTask(task));
 

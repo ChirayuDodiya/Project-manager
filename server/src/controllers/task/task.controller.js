@@ -12,6 +12,7 @@ import {
   broadcastTaskDeleted,
   broadcastTaskUpdated,
 } from '../../services/socket.service.js';
+import { invalidateProjectStats } from '../../services/redis.service.js';
 
 // PUT: /api/v1/tasks/{id} — Update task
 const updateTask = asyncHandler(async (req, res) => {
@@ -36,6 +37,9 @@ const updateTask = asyncHandler(async (req, res) => {
   }).catch((error) => {
     console.error('Activity log failed:', error);
   });
+
+  // Invalidate Redis stats cache
+  await invalidateProjectStats(req.project.slug);
 
   broadcastTaskUpdated(req, req.project.slug, serializeTask(updatedTask), req.task);
 
@@ -87,6 +91,9 @@ const changeTaskStatus = asyncHandler(async (req, res) => {
   }).catch((error) => {
     console.error('Activity log failed:', error);
   });
+
+  // Invalidate Redis stats cache
+  await invalidateProjectStats(req.project.slug);
 
   broadcastTaskStatusChange(req, req.project.slug, serializeTask(updatedTask), req.task);
 
@@ -177,6 +184,9 @@ const deleteTask = asyncHandler(async (req, res) => {
   }).catch((error) => {
     console.error('Activity log failed:', error);
   });
+
+  // Invalidate Redis stats cache
+  await invalidateProjectStats(req.project.slug);
 
   broadcastTaskDeleted(req, req.project.slug, taskId);
 

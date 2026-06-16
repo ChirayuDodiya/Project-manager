@@ -8,6 +8,7 @@ import type { Project } from '../types';
 export function Dashboard() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
@@ -15,7 +16,24 @@ export function Dashboard() {
   const [isAddProjectModalOpen, setIsAddProjectModalOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // Fetch projects from backend whenever page, search query, status filter, or refreshKey changes
+  // Debounce search query to optimize API requests
+  useEffect(() => {
+    if (searchQuery === debouncedSearchQuery) {
+      return;
+    }
+
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+      setPage(1);
+      setProjects([]);
+    }, 400);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [searchQuery, debouncedSearchQuery]);
+
+  // Fetch projects from backend whenever page, status filter, refreshKey, or debounced search query changes
   useEffect(() => {
     let active = true;
     const fetchProjects = async () => {
@@ -29,8 +47,8 @@ export function Dashboard() {
           params.status = statusFilter;
         }
 
-        if (searchQuery) {
-          params.search = searchQuery;
+        if (debouncedSearchQuery) {
+          params.search = debouncedSearchQuery;
         }
 
         const response = await api.get('/projects', { params });
@@ -62,7 +80,7 @@ export function Dashboard() {
     return () => {
       active = false;
     };
-  }, [page, searchQuery, statusFilter, refreshKey]);
+  }, [page, debouncedSearchQuery, statusFilter, refreshKey]);
 
   return (
     <main className="p-8 text-white min-h-full bg-[#121212] select-none">
@@ -86,11 +104,7 @@ export function Dashboard() {
                     type="text"
                     placeholder="search project"
                     value={searchQuery}
-                    onChange={(e) => {
-                      setSearchQuery(e.target.value);
-                      setPage(1);
-                      setProjects([]);
-                    }}
+                    onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full h-10 px-4 bg-[#1e1e1e] border border-[#333] hover:border-zinc-700 focus:border-emerald-500/50 rounded-lg text-white placeholder-gray-500 text-sm focus:outline-none transition-colors"
                   />
                 </div>

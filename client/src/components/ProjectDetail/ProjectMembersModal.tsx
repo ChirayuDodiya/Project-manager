@@ -17,6 +17,7 @@ export const ProjectMembersModal: React.FC<ProjectMembersModalProps> = ({
 }) => {
   const [members, setMembers] = useState<User[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [error, setError] = useState('');
 
@@ -43,9 +44,27 @@ export const ProjectMembersModal: React.FC<ProjectMembersModalProps> = ({
     };
   }, [slug]);
 
-  // Handle live global user search when query is typed
+  // Debounce search query to optimize API requests
   useEffect(() => {
-    if (!searchQuery.trim()) {
+    if (searchQuery === debouncedSearchQuery) {
+      return;
+    }
+
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+      if (!searchQuery.trim()) {
+        setSearchResults([]);
+      }
+    }, 400);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [searchQuery, debouncedSearchQuery]);
+
+  // Handle live global user search when query is typed (debounced)
+  useEffect(() => {
+    if (!debouncedSearchQuery.trim()) {
       return;
     }
 
@@ -53,7 +72,7 @@ export const ProjectMembersModal: React.FC<ProjectMembersModalProps> = ({
     const searchUsers = async () => {
       try {
         const response = await api.get('/users', {
-          params: { search: searchQuery, active_only: 'true' },
+          params: { search: debouncedSearchQuery, active_only: 'true' },
         });
         if (active && response.data && response.data.success) {
           setSearchResults(response.data.data);
@@ -70,7 +89,7 @@ export const ProjectMembersModal: React.FC<ProjectMembersModalProps> = ({
     return () => {
       active = false;
     };
-  }, [searchQuery]);
+  }, [debouncedSearchQuery]);
 
   const handleAddMember = async (userId: number) => {
     try {
@@ -103,7 +122,7 @@ export const ProjectMembersModal: React.FC<ProjectMembersModalProps> = ({
 
   if (!isOpen) return null;
 
-  const displayList = searchQuery.trim() ? searchResults : members;
+  const displayList = debouncedSearchQuery.trim() ? searchResults : members;
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
@@ -159,7 +178,7 @@ export const ProjectMembersModal: React.FC<ProjectMembersModalProps> = ({
         <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
           {displayList.length === 0 ? (
             <div className="text-center text-gray-500 py-8 text-sm">
-              {searchQuery.trim()
+              {debouncedSearchQuery.trim()
                 ? 'No users found matching query'
                 : 'No members currently in project'}
             </div>

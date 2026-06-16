@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import api from '../services/api';
 import type { ProjectTask } from '../types';
 import { socket } from '../services/socket';
 
-export function useKanbanTasks(slug: string) {
+export function useKanbanTasks(slug: string, search: string = '') {
   const [tasksByStatus, setTasksByStatus] = useState<Record<ProjectTask['status'], ProjectTask[]>>({
     todo: [],
     in_progress: [],
@@ -11,7 +11,7 @@ export function useKanbanTasks(slug: string) {
     done: [],
   });
 
-  const [, setPagesByStatus] = useState<Record<ProjectTask['status'], number>>({
+  const pagesByStatusRef = useRef<Record<ProjectTask['status'], number>>({
     todo: 1,
     in_progress: 1,
     in_review: 1,
@@ -38,6 +38,7 @@ export function useKanbanTasks(slug: string) {
             per_page: 5,
             sortBy: 'sort_order',
             order: 'asc',
+            search: search || undefined,
           },
         });
 
@@ -66,12 +67,18 @@ export function useKanbanTasks(slug: string) {
         // ignore
       }
     },
-    [slug]
+    [slug, search]
   );
 
-  // Fetch first page of tasks for all columns on mount or slug/refreshKey change
+  // Fetch first page of tasks for all columns on mount or slug/search/refreshKey change
   useEffect(() => {
     if (slug) {
+      pagesByStatusRef.current = {
+        todo: 1,
+        in_progress: 1,
+        in_review: 1,
+        done: 1,
+      };
       const timer = setTimeout(() => {
         void fetchTasksForStatus('todo', 1);
         void fetchTasksForStatus('in_progress', 1);
@@ -152,11 +159,9 @@ export function useKanbanTasks(slug: string) {
   // useCallback is used here to memoize the handleSeeMore callback, ensuring that its reference remains stable across renders and does not cause children (like KanbanColumn) to unnecessarily re-render.
   const handleSeeMore = useCallback(
     (status: ProjectTask['status']) => {
-      setPagesByStatus((prev) => {
-        const nextPage = (prev[status] || 1) + 1;
-        void fetchTasksForStatus(status, nextPage);
-        return { ...prev, [status]: nextPage };
-      });
+      const nextPage = (pagesByStatusRef.current[status] || 1) + 1;
+      pagesByStatusRef.current[status] = nextPage;
+      void fetchTasksForStatus(status, nextPage);
     },
     [fetchTasksForStatus]
   );

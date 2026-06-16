@@ -7,9 +7,27 @@ export function ChangeRole() {
   const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState('');
+
+  // Debounce search query to optimize API requests
+  useEffect(() => {
+    if (searchQuery === debouncedSearchQuery) {
+      return;
+    }
+
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+      setPage(1);
+      setUsers([]);
+    }, 400);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [searchQuery, debouncedSearchQuery]);
 
   // Fetch users list whenever search query or page changes
   useEffect(() => {
@@ -17,7 +35,7 @@ export function ChangeRole() {
     const fetchUsers = async () => {
       try {
         const response = await api.get('/users', {
-          params: { search: searchQuery, page, per_page: 20 },
+          params: { search: debouncedSearchQuery, page, per_page: 20 },
         });
         if (active && response.data && response.data.success) {
           const fetched = response.data.data;
@@ -48,7 +66,7 @@ export function ChangeRole() {
     return () => {
       active = false;
     };
-  }, [searchQuery, page]);
+  }, [debouncedSearchQuery, page]);
 
   const handleRoleChange = async (userId: number, newRole: 'admin' | 'manager' | 'developer') => {
     try {
@@ -112,7 +130,6 @@ export function ChangeRole() {
             value={searchQuery}
             onChange={(e) => {
               setSearchQuery(e.target.value);
-              setPage(1);
               if (error) setError('');
             }}
             placeholder="search users by name or email"

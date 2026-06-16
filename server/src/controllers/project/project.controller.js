@@ -296,6 +296,7 @@ const listTasks = asyncHandler(async (req, res) => {
     status,
     priority,
     assigned_to,
+    search,
     page = 1,
     per_page = 20,
     sortBy = 'sort_order',
@@ -331,6 +332,11 @@ const listTasks = asyncHandler(async (req, res) => {
   if (status) whereFilters.status = status;
   if (priority) whereFilters.priority = priority;
   if (assigned_to) whereFilters.assigned_to = assigned_to;
+  if (search) {
+    whereFilters.title = {
+      contains: String(search),
+    };
+  }
 
   const [total, tasks] = await Promise.all([
     prisma.tasks.count({

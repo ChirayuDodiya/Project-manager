@@ -11,7 +11,7 @@ export function useKanbanTasks(slug: string) {
     done: [],
   });
 
-  const [pagesByStatus, setPagesByStatus] = useState<Record<ProjectTask['status'], number>>({
+  const [, setPagesByStatus] = useState<Record<ProjectTask['status'], number>>({
     todo: 1,
     in_progress: 1,
     in_review: 1,
@@ -149,11 +149,17 @@ export function useKanbanTasks(slug: string) {
     };
   }, [slug]);
 
-  const handleSeeMore = (status: ProjectTask['status']) => {
-    const nextPage = (pagesByStatus[status] || 1) + 1;
-    setPagesByStatus((prev) => ({ ...prev, [status]: nextPage }));
-    void fetchTasksForStatus(status, nextPage);
-  };
+  // useCallback is used here to memoize the handleSeeMore callback, ensuring that its reference remains stable across renders and does not cause children (like KanbanColumn) to unnecessarily re-render.
+  const handleSeeMore = useCallback(
+    (status: ProjectTask['status']) => {
+      setPagesByStatus((prev) => {
+        const nextPage = (prev[status] || 1) + 1;
+        void fetchTasksForStatus(status, nextPage);
+        return { ...prev, [status]: nextPage };
+      });
+    },
+    [fetchTasksForStatus]
+  );
 
   return {
     tasksByStatus,

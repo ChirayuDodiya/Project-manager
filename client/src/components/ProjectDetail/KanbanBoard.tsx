@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { DragDropProvider } from '@dnd-kit/react';
 import KanbanColumn from './KanbanColumn';
 import ActualHoursPopUp from './ActualHoursPopUp';
@@ -37,22 +38,28 @@ export function KanbanBoard({ slug }: KanbanBoardProps) {
     executeReorder,
   });
 
+  // useMemo is used here to memoize the static columns configuration array, preventing it from being re-allocated on every render of KanbanBoard.
+  const columns = useMemo(
+    () => [
+      { id: 'todo' as const, label: 'todo' },
+      { id: 'in_progress' as const, label: 'in_progress' },
+      { id: 'in_review' as const, label: 'in_review' },
+      { id: 'done' as const, label: 'done' },
+    ],
+    []
+  );
+
   return (
     <DragDropProvider key={refreshKey} onDragEnd={handleDragEnd}>
       <div className="grid grid-cols-4 gap-6 pt-4 border border-white rounded-2xl">
-        {[
-          { id: 'todo' as const, label: 'todo' },
-          { id: 'in_progress' as const, label: 'in_progress' },
-          { id: 'in_review' as const, label: 'in_review' },
-          { id: 'done' as const, label: 'done' },
-        ].map((col) => (
+        {columns.map((col) => (
           <KanbanColumn
             key={col.id}
             id={col.id}
             label={col.label}
             tasks={tasksByStatus[col.id] || []}
             hasMore={hasMoreByStatus[col.id] || false}
-            onSeeMore={() => handleSeeMore(col.id)}
+            onSeeMore={handleSeeMore}
           />
         ))}
       </div>

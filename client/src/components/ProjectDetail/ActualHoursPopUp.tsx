@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 
 interface ActualHoursPopUpProps {
   isOpen: boolean;
@@ -7,7 +7,13 @@ interface ActualHoursPopUpProps {
   taskTitle: string;
 }
 
-export function ActualHoursPopUp({ isOpen, onClose, onSubmit, taskTitle }: ActualHoursPopUpProps) {
+// React.memo is used here to prevent ActualHoursPopUp from re-rendering when drag/drop operations or reordering actions are performed on the Kanban board, unless the popup's visibility or active taskTitle changes.
+export const ActualHoursPopUp = memo(function ActualHoursPopUp({
+  isOpen,
+  onClose,
+  onSubmit,
+  taskTitle,
+}: ActualHoursPopUpProps) {
   const [hours, setHours] = useState('');
 
   if (!isOpen) return null;
@@ -71,6 +77,6 @@ export function ActualHoursPopUp({ isOpen, onClose, onSubmit, taskTitle }: Actua
       </div>
     </div>
   );
-}
+});
 
 export default ActualHoursPopUp;

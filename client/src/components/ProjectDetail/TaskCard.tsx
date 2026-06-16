@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { useSortable } from '@dnd-kit/react/sortable';
 import { CollisionPriority } from '@dnd-kit/abstract';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -21,7 +22,8 @@ const isOverdue = (task: ProjectTask) => {
   return due < today;
 };
 
-export function TaskCard({ task, index }: TaskCardProps) {
+// React.memo is used here to prevent unnecessary re-renders of the TaskCard component when other cards are dragged, reordered, or when state in the parent Kanban column/board updates, unless this specific card's task or index changes.
+export const TaskCard = memo(function TaskCard({ task, index }: TaskCardProps) {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
 
@@ -87,6 +89,6 @@ export function TaskCard({ task, index }: TaskCardProps) {
       </div>
     </div>
   );
-}
+});
 
 export default TaskCard;

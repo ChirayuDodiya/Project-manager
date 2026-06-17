@@ -1,29 +1,61 @@
 import { useState, useEffect } from 'react';
 import api from '../../services/api';
 import type { DashboardStats } from '../../types/dashboard';
+import StatsSkeleton from './StatsSkeleton';
 
 export function Stats() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     let active = true;
     const fetchStats = async () => {
       try {
+        setIsLoading(true);
+        setError('');
         const response = await api.get('/dashboard/stats');
         if (active && response.data && response.data.success) {
           setStats(response.data.data);
         }
-      } catch {
-        // ignore error
+      } catch (err: unknown) {
+        if (active) {
+          const axiosError = err as { response?: { data?: { message?: string } } };
+          setError(axiosError.response?.data?.message || 'Failed to load stats');
+        }
+      } finally {
+        if (active) {
+          setIsLoading(false);
+        }
       }
     };
 
     void fetchStats();
-
     return () => {
       active = false;
     };
-  }, []);
+  }, [refreshKey]);
+
+  if (isLoading) {
+    return <StatsSkeleton />;
+  }
+
+  if (error) {
+    return (
+      <div className="w-75 bg-[#052b14] border border-white/60 rounded-[1.8rem] p-6 text-white select-none min-h-55 flex flex-col justify-center items-center text-center">
+        <div className="text-red-400 text-sm font-bold bg-red-950/30 border border-red-500/40 rounded-xl py-2.5 px-4">
+          {error}
+        </div>
+        <button
+          onClick={() => setRefreshKey((prev) => prev + 1)}
+          className="mt-3 text-sm text-emerald-400 underline hover:text-emerald-300 font-semibold cursor-pointer focus:outline-none"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="w-75 bg-[#052b14] border border-white/60 rounded-[1.8rem] p-6 text-white select-none min-h-55">

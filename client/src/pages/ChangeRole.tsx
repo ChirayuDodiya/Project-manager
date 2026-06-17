@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import api from '../services/api';
 import type { User } from '../types';
 import { useAuth } from '../hooks/useAuth';
+import UserRowSkeleton from '../components/ChangeRole/UserRowSkeleton';
 
 export function ChangeRole() {
   const { user: currentUser } = useAuth();
@@ -11,6 +12,7 @@ export function ChangeRole() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
 
   // Debounce search query to optimize API requests
   useEffect(() => {
@@ -22,6 +24,7 @@ export function ChangeRole() {
       setDebouncedSearchQuery(searchQuery);
       setPage(1);
       setUsers([]);
+      setIsLoading(true);
     }, 400);
 
     return () => {
@@ -34,6 +37,8 @@ export function ChangeRole() {
     let active = true;
     const fetchUsers = async () => {
       try {
+        setIsLoading(true);
+        setError('');
         const response = await api.get('/users', {
           params: { search: debouncedSearchQuery, page, per_page: 20 },
         });
@@ -58,6 +63,10 @@ export function ChangeRole() {
         if (active) {
           const axiosError = err as { response?: { data?: { message?: string } } };
           setError(axiosError.response?.data?.message || 'Failed to fetch users');
+        }
+      } finally {
+        if (active) {
+          setIsLoading(false);
         }
       }
     };
@@ -151,7 +160,7 @@ export function ChangeRole() {
 
           {/* User rows */}
           <div className="space-y-2">
-            {users.length === 0 ? (
+            {users.length === 0 && !isLoading ? (
               <div className="text-center text-gray-500 py-8">No users found</div>
             ) : (
               <>
@@ -248,8 +257,16 @@ export function ChangeRole() {
                   );
                 })}
 
+                {isLoading && (
+                  <>
+                    <UserRowSkeleton />
+                    <UserRowSkeleton />
+                    <UserRowSkeleton />
+                  </>
+                )}
+
                 {/* Pagination See More Button */}
-                {hasMore && (
+                {hasMore && !isLoading && (
                   <div className="flex justify-center pt-8 pb-12 pr-14">
                     <button
                       onClick={() => setPage((prev) => prev + 1)}

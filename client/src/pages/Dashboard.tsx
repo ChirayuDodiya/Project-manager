@@ -14,6 +14,7 @@ export function Dashboard() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const [isAddProjectModalOpen, setIsAddProjectModalOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -28,6 +29,8 @@ export function Dashboard() {
       setDebouncedSearchQuery(searchQuery);
       setPage(1);
       setProjects([]);
+      setIsLoading(true);
+      setError('');
     }, 400);
 
     return () => {
@@ -41,6 +44,7 @@ export function Dashboard() {
     const fetchProjects = async () => {
       try {
         setIsLoading(true);
+        setError('');
         const params: Record<string, string | number> = {
           page,
           per_page: 20,
@@ -74,8 +78,11 @@ export function Dashboard() {
             }
           }
         }
-      } catch {
-        // ignore error
+      } catch (err: unknown) {
+        if (active) {
+          const axiosError = err as { response?: { data?: { message?: string } } };
+          setError(axiosError.response?.data?.message || 'Failed to fetch projects');
+        }
       } finally {
         if (active) {
           setIsLoading(false);
@@ -111,7 +118,10 @@ export function Dashboard() {
                     type="text"
                     placeholder="search project"
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      if (error) setError('');
+                    }}
                     className="w-full h-10 px-4 bg-[#1e1e1e] border border-[#333] hover:border-zinc-700 focus:border-emerald-500/50 rounded-lg text-white placeholder-gray-500 text-sm focus:outline-none transition-colors"
                   />
                 </div>
@@ -124,6 +134,7 @@ export function Dashboard() {
                       setStatusFilter(e.target.value);
                       setPage(1);
                       setProjects([]);
+                      if (error) setError('');
                     }}
                     className="h-10 pl-4 pr-8 bg-[#1e1e1e] border border-[#333] hover:border-zinc-700 focus:border-emerald-500/50 rounded-lg text-gray-300 text-sm focus:outline-none transition-colors cursor-pointer appearance-none select-none font-semibold"
                   >
@@ -153,6 +164,13 @@ export function Dashboard() {
               Add Project
             </button>
           </div>
+
+          {/* Warning/Error Message inside section */}
+          {error && (
+            <div className="text-red-400 text-sm font-bold bg-red-950/30 border border-red-500/40 rounded-xl py-2.5 px-4 mt-4 mb-2">
+              {error}
+            </div>
+          )}
 
           {/* Projects Listing */}
           {projects.length === 0 && !isLoading ? (

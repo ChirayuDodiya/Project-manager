@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../../services/api';
 import type { ProjectStatsData } from '../../types';
+import ProjectStatsSkeleton from './ProjectStatsSkeleton';
 
 interface ProjectStatsProps {
   slug: string;
@@ -43,11 +44,7 @@ export function ProjectStats({ slug }: ProjectStatsProps) {
   }, [slug]);
 
   if (loading) {
-    return (
-      <div className="w-[320px] bg-[#1e1e1e] border border-[#333] rounded-3xl p-6 text-white text-left font-sans select-none min-h-62.5 flex flex-col justify-center">
-        <span className="text-gray-400 font-semibold">Loading stats...</span>
-      </div>
-    );
+    return <ProjectStatsSkeleton />;
   }
 
   if (error || !stats) {

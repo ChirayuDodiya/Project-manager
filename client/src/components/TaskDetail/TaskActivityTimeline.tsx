@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../../services/api';
 import type { ActivityLog } from '../../types';
+import TaskActivityTimelineSkeleton from './TaskActivityTimelineSkeleton';
 
 interface TaskActivityTimelineProps {
   taskId: number;
@@ -68,17 +69,28 @@ const formatActivityLog = (log: ActivityLog): string => {
 
 export function TaskActivityTimeline({ taskId, activityTrigger }: TaskActivityTimelineProps) {
   const [logs, setLogs] = useState<ActivityLog[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     let active = true;
     const fetchLogs = async () => {
       try {
+        setIsLoading(true);
+        setError('');
         const res = await api.get(`/tasks/${taskId}/activities`);
         if (active && res.data && res.data.success) {
           setLogs(res.data.data);
         }
-      } catch (err) {
-        console.error('Failed to fetch activity logs:', err);
+      } catch (err: unknown) {
+        if (active) {
+          const axiosError = err as { response?: { data?: { message?: string } } };
+          setError(axiosError.response?.data?.message || 'Failed to fetch activity logs.');
+        }
+      } finally {
+        if (active) {
+          setIsLoading(false);
+        }
       }
     };
 
@@ -89,6 +101,21 @@ export function TaskActivityTimeline({ taskId, activityTrigger }: TaskActivityTi
       active = false;
     };
   }, [taskId, activityTrigger]);
+
+  if (isLoading) {
+    return <TaskActivityTimelineSkeleton />;
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-2 w-full text-left">
+        <h3 className="text-xl font-bold tracking-wide text-emerald-400">Activity Timeline:</h3>
+        <div className="bg-[#1e1e1e]/95 border border-white/20 rounded-4xl p-6 shadow-2xl text-red-400 text-sm font-semibold">
+          {error}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-2 w-full text-left">

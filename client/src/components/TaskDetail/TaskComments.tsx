@@ -3,6 +3,7 @@ import api from '../../services/api';
 import type { TaskComment, User } from '../../types';
 import { useAuth } from '../../hooks/useAuth';
 import { socket } from '../../services/socket';
+import TaskCommentsSkeleton from './TaskCommentsSkeleton';
 
 interface TaskCommentsProps {
   taskId: number;
@@ -288,17 +289,28 @@ export function TaskComments({ taskId, onCommentAdded }: TaskCommentsProps) {
   const [comments, setComments] = useState<TaskComment[]>([]);
   const [newCommentBody, setNewCommentBody] = useState('');
   const [replyingTo, setReplyingTo] = useState<TaskComment | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     let active = true;
     const loadComments = async () => {
       try {
+        setIsLoading(true);
+        setError('');
         const res = await api.get(`/tasks/${taskId}/comments`);
         if (active && res.data && res.data.success) {
           setComments(res.data.data);
         }
-      } catch (err) {
-        console.error('Failed to fetch comments:', err);
+      } catch (err: unknown) {
+        if (active) {
+          const axiosError = err as { response?: { data?: { message?: string } } };
+          setError(axiosError.response?.data?.message || 'Failed to fetch comments.');
+        }
+      } finally {
+        if (active) {
+          setIsLoading(false);
+        }
       }
     };
 
@@ -370,6 +382,21 @@ export function TaskComments({ taskId, onCommentAdded }: TaskCommentsProps) {
       console.error('Failed to post comment:', err);
     }
   };
+
+  if (isLoading) {
+    return <TaskCommentsSkeleton />;
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-2 w-full text-left">
+        <h3 className="text-2xl font-bold tracking-wide text-emerald-400">Comments:</h3>
+        <div className="bg-[#1e1e1e]/95 border border-white/20 rounded-4xl p-6 shadow-2xl text-red-400 text-sm font-semibold">
+          {error}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-2 w-full text-left">

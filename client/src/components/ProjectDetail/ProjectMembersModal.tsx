@@ -9,6 +9,18 @@ interface ProjectMembersModalProps {
   onMembersChanged?: () => void;
 }
 
+function MemberRowSkeleton() {
+  return (
+    <div className="flex items-center justify-between py-2.5 px-4 bg-[#252525]/30 border border-[#333]/20 rounded-2xl animate-pulse">
+      <div className="flex flex-col justify-center min-w-0 pr-4 space-y-2 flex-1">
+        <div className="h-4 bg-[#2d2d2d] rounded-md w-1/3" />
+        <div className="h-3 bg-[#202020] rounded-md w-1/2" />
+      </div>
+      <div className="w-8 h-8 bg-[#2d2d2d] rounded-lg border border-zinc-800" />
+    </div>
+  );
+}
+
 export const ProjectMembersModal: React.FC<ProjectMembersModalProps> = ({
   isOpen,
   onClose,
@@ -20,12 +32,15 @@ export const ProjectMembersModal: React.FC<ProjectMembersModalProps> = ({
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   // Fetch project team members on mount
   useEffect(() => {
     let active = true;
     const fetchMembers = async () => {
       try {
+        setIsLoading(true);
+        setError('');
         const response = await api.get(`/projects/${slug}/team-members`);
         if (active && response.data && response.data.success) {
           setMembers(response.data.data);
@@ -34,6 +49,10 @@ export const ProjectMembersModal: React.FC<ProjectMembersModalProps> = ({
         if (active) {
           const axiosError = err as { response?: { data?: { message?: string } } };
           setError(axiosError.response?.data?.message || 'Failed to fetch team members.');
+        }
+      } finally {
+        if (active) {
+          setIsLoading(false);
         }
       }
     };
@@ -54,6 +73,8 @@ export const ProjectMembersModal: React.FC<ProjectMembersModalProps> = ({
       setDebouncedSearchQuery(searchQuery);
       if (!searchQuery.trim()) {
         setSearchResults([]);
+      } else {
+        setIsLoading(true);
       }
     }, 400);
 
@@ -71,6 +92,8 @@ export const ProjectMembersModal: React.FC<ProjectMembersModalProps> = ({
     let active = true;
     const searchUsers = async () => {
       try {
+        setIsLoading(true);
+        setError('');
         const response = await api.get('/users', {
           params: { search: debouncedSearchQuery, active_only: 'true' },
         });
@@ -81,6 +104,10 @@ export const ProjectMembersModal: React.FC<ProjectMembersModalProps> = ({
         if (active) {
           const axiosError = err as { response?: { data?: { message?: string } } };
           setError(axiosError.response?.data?.message || 'Failed to search users.');
+        }
+      } finally {
+        if (active) {
+          setIsLoading(false);
         }
       }
     };
@@ -176,69 +203,78 @@ export const ProjectMembersModal: React.FC<ProjectMembersModalProps> = ({
 
         {/* List of Members */}
         <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
-          {displayList.length === 0 ? (
+          {displayList.length === 0 && !isLoading ? (
             <div className="text-center text-gray-500 py-8 text-sm">
               {debouncedSearchQuery.trim()
                 ? 'No users found matching query'
                 : 'No members currently in project'}
             </div>
           ) : (
-            displayList.map((u) => {
-              const isAlreadyMember = members.some((m) => m.id === u.id);
-              return (
-                <div
-                  key={u.id}
-                  className="flex items-center justify-between py-2.5 px-4 hover:bg-[#252525] rounded-2xl transition-colors duration-150"
-                >
-                  <div className="flex flex-col justify-center min-w-0 pr-4">
-                    <span className="text-white font-semibold text-sm truncate">{u.name}</span>
-                    <span className="text-gray-500 text-xs truncate mt-0.5">{u.email}</span>
-                  </div>
+            <>
+              {displayList.map((u) => {
+                const isAlreadyMember = members.some((m) => m.id === u.id);
+                return (
+                  <div
+                    key={u.id}
+                    className="flex items-center justify-between py-2.5 px-4 hover:bg-[#252525] rounded-2xl transition-colors duration-150"
+                  >
+                    <div className="flex flex-col justify-center min-w-0 pr-4">
+                      <span className="text-white font-semibold text-sm truncate">{u.name}</span>
+                      <span className="text-gray-500 text-xs truncate mt-0.5">{u.email}</span>
+                    </div>
 
-                  <div>
-                    {isAlreadyMember ? (
-                      /* Red Minus Icon to Remove */
-                      <button
-                        onClick={() => handleRemoveMember(u.id)}
-                        className="p-1.5 bg-[#4c1c1c] hover:bg-[#682525] border border-red-500/50 rounded-lg text-red-400 cursor-pointer transition-colors"
-                        title="Remove Member"
-                      >
-                        <svg
-                          className="w-5 h-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                          strokeWidth="2.5"
+                    <div>
+                      {isAlreadyMember ? (
+                        /* Red Minus Icon to Remove */
+                        <button
+                          onClick={() => handleRemoveMember(u.id)}
+                          className="p-1.5 bg-[#4c1c1c] hover:bg-[#682525] border border-red-500/50 rounded-lg text-red-400 cursor-pointer transition-colors"
+                          title="Remove Member"
                         >
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12h-15" />
-                        </svg>
-                      </button>
-                    ) : (
-                      /* Green Plus Icon to Add */
-                      <button
-                        onClick={() => handleAddMember(u.id)}
-                        className="p-1.5 bg-[#043314] hover:bg-[#074c1f] border border-[#10b981]/50 rounded-lg text-emerald-400 cursor-pointer transition-colors"
-                        title="Add Member"
-                      >
-                        <svg
-                          className="w-5 h-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                          strokeWidth="2.5"
+                          <svg
+                            className="w-5 h-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                            strokeWidth="2.5"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12h-15" />
+                          </svg>
+                        </button>
+                      ) : (
+                        /* Green Plus Icon to Add */
+                        <button
+                          onClick={() => handleAddMember(u.id)}
+                          className="p-1.5 bg-[#043314] hover:bg-[#074c1f] border border-[#10b981]/50 rounded-lg text-emerald-400 cursor-pointer transition-colors"
+                          title="Add Member"
                         >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M12 4.5v15m7.5-7.5h-15"
-                          />
-                        </svg>
-                      </button>
-                    )}
+                          <svg
+                            className="w-5 h-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                            strokeWidth="2.5"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M12 4.5v15m7.5-7.5h-15"
+                            />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
                   </div>
+                );
+              })}
+              {isLoading && (
+                <div className="space-y-2 mt-2">
+                  <MemberRowSkeleton />
+                  <MemberRowSkeleton />
+                  <MemberRowSkeleton />
                 </div>
-              );
-            })
+              )}
+            </>
           )}
         </div>
       </div>

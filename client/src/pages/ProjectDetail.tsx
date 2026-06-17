@@ -10,6 +10,9 @@ import ProjectMembersModal from '../components/ProjectDetail/ProjectMembersModal
 
 import { socket } from '../services/socket';
 import { useAuth } from '../hooks/useAuth';
+import ProjectDetailsCardSkeleton from '../components/ProjectDetail/ProjectDetailsCardSkeleton';
+import ProjectStatsSkeleton from '../components/ProjectDetail/ProjectStatsSkeleton';
+import TaskCardSkeleton from '../components/ProjectDetail/TaskCardSkeleton';
 
 export function ProjectDetail() {
   const { slug } = useParams<{ slug: string }>();
@@ -19,18 +22,30 @@ export function ProjectDetail() {
   const [isMembersModalOpen, setIsMembersModalOpen] = useState(false);
   const { user } = useAuth();
   const [viewers, setViewers] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Fetch project details
   useEffect(() => {
     let active = true;
     const fetchProject = async () => {
       try {
+        setIsLoading(true);
+        setError('');
         const response = await api.get(`/projects/${slug}`);
         if (active && response.data && response.data.success) {
           setProject(response.data.data.project);
         }
-      } catch {
-        // ignore error
+      } catch (err: unknown) {
+        if (active) {
+          const axiosError = err as { response?: { data?: { message?: string } } };
+          setError(axiosError.response?.data?.message || 'Failed to fetch project details');
+        }
+      } finally {
+        if (active) {
+          setIsLoading(false);
+        }
       }
     };
     if (slug) {
@@ -39,7 +54,7 @@ export function ProjectDetail() {
     return () => {
       active = false;
     };
-  }, [slug]);
+  }, [slug, refreshKey]);
 
   // Join/leave project socket room on mount/unmount and track presence
   useEffect(() => {
@@ -66,8 +81,74 @@ export function ProjectDetail() {
     }
   };
 
-  if (!project) {
-    return null;
+  if (error) {
+    return (
+      <main className="p-8 text-white min-h-full bg-[#121212] select-none flex flex-col items-center justify-center text-center">
+        <div className="max-w-md space-y-6">
+          <div className="text-red-400 text-sm font-bold bg-red-950/30 border border-red-500/40 rounded-2xl py-4 px-6 shadow-md">
+            {error}
+          </div>
+          <div className="flex gap-4 justify-center">
+            <Link
+              to="/"
+              className="px-6 py-2.5 bg-[#1e1e1e] hover:bg-[#2d2d2d] border border-[#333] hover:border-zinc-700 text-white rounded-xl text-sm font-semibold transition-all cursor-pointer shadow-md focus:outline-none"
+            >
+              Back to Dashboard
+            </Link>
+            <button
+              onClick={() => setRefreshKey((prev) => prev + 1)}
+              className="px-6 py-2.5 bg-[#043314] hover:bg-[#074c1f] border border-white/60 text-white rounded-xl text-sm font-semibold transition-all cursor-pointer shadow-md focus:outline-none focus:ring-2 focus:ring-[#098032]"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (isLoading || !project) {
+    return (
+      <main className="p-2 text-white min-h-full bg-[#121212] select-none">
+        <div className=" mx-auto space-y-8 text-left">
+          <div className="flex flex-wrap items-start gap-6">
+            {/* Back button skeleton */}
+            <div className="w-12 h-10 bg-[#043314]/30 border border-white/30 rounded-xl" />
+
+            {/* Project Details Card Skeleton */}
+            <ProjectDetailsCardSkeleton />
+
+            {/* Project Statistics Skeleton */}
+            <ProjectStatsSkeleton />
+          </div>
+
+          {/* Kanban Board Skeleton */}
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              {/* Search input placeholder */}
+              <div className="w-full max-w-md h-11 bg-[#1a1a1a] border border-[#333] rounded-xl animate-pulse" />
+            </div>
+
+            <div className="grid grid-cols-4 gap-6 pt-4 border border-white/20 rounded-2xl">
+              {['todo', 'in_progress', 'in_review', 'done'].map((status) => (
+                <div
+                  key={status}
+                  className="flex flex-col bg-[#121212] border border-white/20 rounded-3xl p-3 min-h-125 animate-pulse"
+                >
+                  <div className="h-9 bg-[#043314]/30 border border-white/20 rounded-2xl flex items-center justify-center text-zinc-500 font-semibold capitalize">
+                    {status}
+                  </div>
+                  <div className="flex-1 flex flex-col gap-4 mt-4">
+                    <TaskCardSkeleton />
+                    <TaskCardSkeleton />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </main>
+    );
   }
 
   return (

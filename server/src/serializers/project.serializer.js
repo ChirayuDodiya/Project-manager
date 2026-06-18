@@ -12,7 +12,7 @@ const serializeProject = (project) => {
     start_date: project.start_date,
     end_date: project.end_date,
     budget: project.budget,
-    tasks: project.tasks ? project.tasks.map((task) => serializeTask(task)) : [],
+    tasks: project.tasks ? project.tasks.map((task) => serializeTask(task, project.owner_id)) : [],
     task_count: project.tasks?.length || 0,
     created_at: project.createdAt,
   };

@@ -54,16 +54,24 @@ const prisma = new PrismaClient({
             assigned_to: userId,
             status: { in: ['todo', 'in_progress', 'in_review'] },
             deleted_at: null,
+            projects: {
+              deleted_at: null,
+            },
           },
         });
       },
       async countOverdue(userId) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
         return this.count({
           where: {
             assigned_to: userId,
-            due_date: { lt: new Date() },
+            due_date: { lt: today },
             status: { not: 'done' },
             deleted_at: null,
+            projects: {
+              deleted_at: null,
+            },
           },
         });
       },
@@ -74,6 +82,9 @@ const prisma = new PrismaClient({
             status: 'done',
             deleted_at: null,
             updated_at: { gte: startOfWeek },
+            projects: {
+              deleted_at: null,
+            },
           },
         });
       },
@@ -102,6 +113,8 @@ const prisma = new PrismaClient({
         });
       },
       async getProjectSummaryStats(projectId) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
         const [statusGroups, totalHours, overdueCount] = await Promise.all([
           this.groupBy({
             by: ['status'],
@@ -128,7 +141,7 @@ const prisma = new PrismaClient({
               project_id: projectId,
               deleted_at: null,
               due_date: {
-                lt: new Date(),
+                lt: today,
               },
               status: {
                 not: 'done',

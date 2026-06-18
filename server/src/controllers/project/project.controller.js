@@ -356,7 +356,7 @@ const listTasks = asyncHandler(async (req, res) => {
     ),
   ]);
 
-  const serialized = tasks.map((task) => serializeTask(task));
+  const serialized = tasks.map((task) => serializeTask(task, project.owner_id));
 
   return paginatedResponse(res, serialized, {
     page: pageNumber,
@@ -402,9 +402,14 @@ const createTask = asyncHandler(async (req, res) => {
   // Invalidate Redis cache for project stats
   await invalidateProjectStats(project.slug);
 
-  broadcastTaskCreated(req, project.slug, serializeTask(task));
+  broadcastTaskCreated(req, project.slug, serializeTask(task, project.owner_id));
 
-  return successResponse(res, serializeTask(task), 'Task created successfully', 201);
+  return successResponse(
+    res,
+    serializeTask(task, project.owner_id),
+    'Task created successfully',
+    201
+  );
 });
 
 // GET: /api/v1/projects/{slug}/team-members — List all team members assigned to project

@@ -4,6 +4,7 @@ import api from '../../services/api';
 import type { ProjectTask } from '../../types';
 import type { User } from '../../types/auth';
 import { decimalRegex } from '../../utils/validation';
+import { useAuth } from '../../hooks/useAuth';
 
 interface TaskDetailComponentProps {
   initialTask: ProjectTask;
@@ -17,6 +18,11 @@ export function TaskDetailComponent({
   onUpdate,
 }: TaskDetailComponentProps) {
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const isOwner = user?.role === 'admin' || task.project_owner_id === user?.id;
+  const isAssignee = task.assigned_to?.id === user?.id;
+  const canEditStatusAndAssignee = isOwner || isAssignee;
 
   // Delete task using DELETE /tasks/:id
   const handleDeleteTask = async () => {
@@ -322,12 +328,15 @@ export function TaskDetailComponent({
           <label className="block text-emerald-400 text-sm font-semibold">Status:</label>
           <select
             value={localStatus}
+            disabled={!canEditStatusAndAssignee}
             onChange={(e) =>
               void handleStatusChange(
                 e.target.value as 'todo' | 'in_progress' | 'in_review' | 'done'
               )
             }
-            className="w-full h-11 px-4 bg-[#1e1e1e] border border-[#043314] hover:border-emerald-700 focus:border-emerald-500 focus:outline-none rounded-xl text-white text-sm cursor-pointer capitalize font-semibold transition-colors"
+            className={`w-full h-11 px-4 bg-[#1e1e1e] border border-[#043314] hover:border-emerald-700 focus:border-emerald-500 focus:outline-none rounded-xl text-white text-sm cursor-pointer capitalize font-semibold transition-colors ${
+              !canEditStatusAndAssignee ? 'opacity-50 cursor-not-allowed border-zinc-700' : ''
+            }`}
           >
             {['todo', 'in_progress', 'in_review', 'done'].map((st) => {
               const allowed = st === task.status || isStatusTransitionAllowed(st);
@@ -373,8 +382,14 @@ export function TaskDetailComponent({
       <div className="space-y-1 relative" ref={assigneeDropdownRef}>
         <label className="block text-emerald-400 text-sm font-semibold">Assigned To:</label>
         <div
-          onClick={() => setShowAssigneeDropdown(!showAssigneeDropdown)}
-          className="w-full h-11 px-4 bg-[#1e1e1e] border border-[#043314] hover:border-emerald-700 focus-within:border-emerald-500 rounded-xl flex items-center justify-between cursor-pointer text-sm text-white transition-colors"
+          onClick={() => {
+            if (isOwner) {
+              setShowAssigneeDropdown(!showAssigneeDropdown);
+            }
+          }}
+          className={`w-full h-11 px-4 bg-[#1e1e1e] border border-[#043314] hover:border-emerald-700 focus-within:border-emerald-500 rounded-xl flex items-center justify-between cursor-pointer text-sm text-white transition-colors ${
+            !isOwner ? 'opacity-50 cursor-not-allowed border-zinc-700' : ''
+          }`}
         >
           {task.assigned_to ? (
             <span className="font-medium capitalize">{task.assigned_to.name}</span>
@@ -383,7 +398,7 @@ export function TaskDetailComponent({
           )}
 
           <div className="flex items-center gap-2">
-            {task.assigned_to && (
+            {task.assigned_to && isOwner && (
               <button
                 type="button"
                 onClick={(e) => {
@@ -395,7 +410,9 @@ export function TaskDetailComponent({
                 Clear
               </button>
             )}
-            <span className="border-t-4 border-t-gray-500 border-x-4 border-x-transparent inline-block w-0 h-0" />
+            {isOwner && (
+              <span className="border-t-4 border-t-gray-500 border-x-4 border-x-transparent inline-block w-0 h-0" />
+            )}
           </div>
         </div>
 

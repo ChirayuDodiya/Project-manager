@@ -41,9 +41,18 @@ const updateTask = asyncHandler(async (req, res) => {
   // Invalidate Redis stats cache
   await invalidateProjectStats(req.project.slug);
 
-  broadcastTaskUpdated(req, req.project.slug, serializeTask(updatedTask), req.task);
+  broadcastTaskUpdated(
+    req,
+    req.project.slug,
+    serializeTask(updatedTask, req.project?.owner_id),
+    req.task
+  );
 
-  return successResponse(res, serializeTask(updatedTask), 'Task updated successfully');
+  return successResponse(
+    res,
+    serializeTask(updatedTask, req.project?.owner_id),
+    'Task updated successfully'
+  );
 });
 
 // PATCH: /api/v1/tasks/{id}/status — Change status only (with transition validation)
@@ -95,9 +104,18 @@ const changeTaskStatus = asyncHandler(async (req, res) => {
   // Invalidate Redis stats cache
   await invalidateProjectStats(req.project.slug);
 
-  broadcastTaskStatusChange(req, req.project.slug, serializeTask(updatedTask), req.task);
+  broadcastTaskStatusChange(
+    req,
+    req.project.slug,
+    serializeTask(updatedTask, req.project?.owner_id),
+    req.task
+  );
 
-  return successResponse(res, serializeTask(updatedTask), 'Task status updated successfully');
+  return successResponse(
+    res,
+    serializeTask(updatedTask, req.project?.owner_id),
+    'Task status updated successfully'
+  );
 });
 
 // PATCH: /api/v1/tasks/{id}/assign — Assign/reassign task to a user
@@ -134,9 +152,18 @@ const assignTask = asyncHandler(async (req, res) => {
     console.error('Activity log failed:', error);
   });
 
-  broadcastTaskAssigned(req, req.project.slug, serializeTask(updatedTask), req.task);
+  broadcastTaskAssigned(
+    req,
+    req.project.slug,
+    serializeTask(updatedTask, req.project?.owner_id),
+    req.task
+  );
 
-  return successResponse(res, serializeTask(updatedTask), 'Task assignment updated successfully');
+  return successResponse(
+    res,
+    serializeTask(updatedTask, req.project?.owner_id),
+    'Task assignment updated successfully'
+  );
 });
 
 // POST: /api/v1/tasks/reorder — Bulk update sort_order for drag-and-drop
@@ -293,7 +320,11 @@ const listTaskActivities = asyncHandler(async (req, res) => {
 
 // GET: /api/v1/tasks/{id} — Get single task details
 const showTask = asyncHandler(async (req, res) => {
-  return successResponse(res, serializeTask(req.task), 'Task details retrieved successfully');
+  return successResponse(
+    res,
+    serializeTask(req.task, req.project?.owner_id),
+    'Task details retrieved successfully'
+  );
 });
 
 export {

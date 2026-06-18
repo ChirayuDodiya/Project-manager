@@ -14,6 +14,7 @@ export interface ProjectTask {
     role: string;
     avatar_url: string | null;
   } | null;
+  project_owner_id?: number | null;
 }
 
 export interface Project {

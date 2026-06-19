@@ -7,8 +7,10 @@
   "scripts": {
     "dev": "nodemon index.js",
     "prod": "node index.js",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand",
     "postinstall": "prisma generate",
     "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "check-format": "prettier --check .",
     "prisma:generate": "prisma generate",
     "prisma:pull": "prisma db pull",
@@ -39,7 +41,9 @@
   },
   "devDependencies": {
     "@types/node": "^25.8.0",
+    "jest": "^30.4.2",
     "nodemon": "^3.1.14",
-    "prettier": "^3.8.3"
+    "prettier": "^3.8.3",
+    "supertest": "^7.2.2"
   }
 }

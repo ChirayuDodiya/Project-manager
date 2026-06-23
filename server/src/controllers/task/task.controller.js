@@ -67,7 +67,7 @@ const changeTaskStatus = asyncHandler(async (req, res) => {
     const newIdx = statuses.indexOf(status);
 
     if (newIdx > currentIdx + 1) {
-      return errorResponse(res, `Invalid status transition from ${task.status} to ${status}`, 400);
+      return errorResponse(res, `Invalid status transition from ${task.status} to ${status}`, 422);
     }
   }
 

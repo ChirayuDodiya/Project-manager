@@ -2,6 +2,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { app } from './src/app.js';
 import './src/services/cron.service.js';
+import prisma from './src/prisma/client.js';
 
 const server = createServer(app);
 
@@ -45,12 +46,12 @@ const handleLeaveProject = (socket, io) => {
 };
 
 io.on('connection', (socket) => {
-  console.log('A user connected:', socket.id);
+  // console.log('A user connected:', socket.id);
 
   // Join user-specific notification room
   socket.on('join:user', (userId) => {
     socket.join(`user:${userId}`);
-    console.log(`Socket ${socket.id} joined user room: user:${userId}`);
+    // console.log(`Socket ${socket.id} joined user room: user:${userId}`);
   });
 
   // Join project room with presence tracking
@@ -91,17 +92,13 @@ io.on('connection', (socket) => {
       }
       usersInProject.get(user.id).socketIds.add(socket.id);
 
-      console.log(
-        `Socket ${socket.id} joined project room: project:${projectSlug} (User ID: ${user.id})`
-      );
+      // console.log(`Socket ${socket.id} joined project room: project:${projectSlug} (User ID: ${user.id})`);
 
       // Broadcast updated presence list
       const members = Array.from(usersInProject.values()).map((u) => u.user);
       io.to(`project:${projectSlug}`).emit('project:presence', members);
     } else {
-      console.log(
-        `Socket ${socket.id} joined project room: project:${projectSlug} (No presence profile)`
-      );
+      // console.log(`Socket ${socket.id} joined project room: project:${projectSlug} (No presence profile)`);
     }
   });
 
@@ -112,11 +109,17 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     handleLeaveProject(socket, io);
-    console.log('User disconnected:', socket.id);
+    // console.log('User disconnected:', socket.id);
   });
 });
 
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
   console.log(`Server running on port ${PORT}`);
+  try {
+    await prisma.$connect();
+    console.log('Database connected successfully');
+  } catch (error) {
+    console.error('Database connection failed:', error.message);
+  }
 });
